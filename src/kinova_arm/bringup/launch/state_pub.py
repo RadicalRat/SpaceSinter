@@ -22,8 +22,6 @@ def generate_launch_description():
         path_to_urdf
     ])
 
-    # robot_description_content is a Substitution (Command). Wrap it in
-    # ParameterValue with value_type=str so launch won't try to parse it as YAML.
     robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
     robot_state_pub_node = Node(
@@ -34,8 +32,16 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
+    joint_state_pub_gui = Node(
+        package="joint_state_publisher_gui",
+        executable="joint_state_publisher_gui",
+        name="jsp",
+        output="both",
+    )
+
     nodes = [
         robot_state_pub_node,
+        joint_state_pub_gui,
     ]
 
     return LaunchDescription(nodes)
