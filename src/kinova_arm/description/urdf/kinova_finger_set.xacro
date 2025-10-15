@@ -31,15 +31,4 @@
     </xacro:macro>
 
 
-    <xacro:macro name="kinova_2fingers" params="link_hand prefix">
-
-        <!-- finger1 Rot := Ry((1/2)*Pi) . Rx(Pi) . Rz(-52.8*((1/180)*Pi)) -->
-        <xacro:kinova_finger prefix="${prefix}" finger_number="1" hand="${link_hand}" finger_origin_xyz="-0.0025 0.03095 -0.11482" finger_origin_rpy="-1.570796327 .649262481663582 1.57079632679490"/>
-        <!-- finger2 Rot := Ry((1/2)*Pi) . Rz(-52.8*((1/180)*Pi))  -->
-        <xacro:kinova_finger prefix="${prefix}" finger_number="2" hand="${link_hand}" finger_origin_xyz="-0.0025 -0.03095 -0.11482" finger_origin_rpy="-1.570796327 .649262481663582 -1.57079632679490"/>
-
-    </xacro:macro>
-
-
-
 </root>
