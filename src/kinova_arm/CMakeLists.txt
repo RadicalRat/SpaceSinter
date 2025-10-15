@@ -11,6 +11,13 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+
+install(DIRECTORY description/
+  DESTINATION share/${PROJECT_NAME}/description
+  FILES_MATCHING PATTERN "*.stl" PATTERN "*.dae" PATTERN "*.xacro" PATTERN "*.urdf"
+)
+
+
 install(DIRECTORY
   bringup description
   DESTINATION share/${PROJECT_NAME}/
