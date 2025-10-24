@@ -1,0 +1,14 @@
+- name: Home
+  favorite: true
+  joint_group_names:
+    - arm
+  joint_state:
+    header:
+      frame_id: world
+      stamp:
+        sec: 0
+        nanosec: 0
+    name: [j2n6s300_joint_1, j2n6s300_joint_2, j2n6s300_joint_3, j2n6s300_joint_4, j2n6s300_joint_5, j2n6s300_joint_6]
+    position: [7.2854474427322627e-05, 0.0060998872530424308, -3.1250605484909082, -2.5051932931762071, -2.7164243118882329e-05, 0.95966324117024648, 1.5699864595074029]
+    velocity: []
+    effort: []

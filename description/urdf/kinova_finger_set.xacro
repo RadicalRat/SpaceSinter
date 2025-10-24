@@ -2,7 +2,7 @@
 <!-- for 3finger_hand and 2finger_hand -->
 
 
-<root xmlns:xi="http://www.w3.org/2001/XInclude"
+<robot xmlns:xi="http://www.w3.org/2001/XInclude"
     xmlns:gazebo="http://playerstage.sourceforge.net/gazebo/xmlschema/#gz"
     xmlns:model="http://playerstage.sourceforge.net/gazebo/xmlschema/#model"
     xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor"
@@ -16,7 +16,7 @@
     xmlns:physics="http://playerstage.sourceforge.net/gazebo/xmlschema/#physics"
     xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-    <xacro:include filename="$(find kinova_arm)/description/urdf/kinova_common.xacro" />
+    <xacro:include filename="$(find kinova_gen2)/description/urdf/kinova_common.xacro" />
 
 
     <xacro:macro name="kinova_3fingers" params="link_hand prefix">
@@ -31,4 +31,4 @@
     </xacro:macro>
 
 
-</root>
+</robot>

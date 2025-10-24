@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 
-<root xmlns:xi="http://www.w3.org/2001/XInclude"
+<robot xmlns:xi="http://www.w3.org/2001/XInclude"
 	xmlns:gazebo="http://playerstage.sourceforge.net/gazebo/xmlschema/#gz"
     xmlns:model="http://playerstage.sourceforge.net/gazebo/xmlschema/#model"
 	xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor"
@@ -195,4 +195,4 @@
   </xacro:unless>
 
 </xacro:macro>
-</root>
+</robot>
