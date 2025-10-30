@@ -1,0 +1,149 @@
+###############################################################
+#
+#  This configures the robot to work with moveit pro
+#
+###############################################################
+
+hardware:
+  # Set simulated to false if you are using this as a configuration for real hardware.
+  # This allows users to switch between mock and real hardware using the same configuration.
+  # [Required]
+  simulated: True
+
+  # If the MoveIt Pro Agent should launch the ros2 controller node.
+  # [Optional, default=True]
+  launch_control_node: True
+
+  # If the MoveIt Pro Agent should launch the robot state publisher.
+  # This should be false if you are launching the robot state publisher as part of drivers.
+  # [Optional, default=True]
+  launch_robot_state_publisher: True
+
+  # Specify additional launch files for running the robot with real hardware.
+  # [Optional, defaults to a blank launch file if not specified]
+  # robot_driver_persist_launch_file:
+  #   package: "kinova_gen2"
+  #   path:
+
+  # Specify any additional launch files for running the robot in simulation mode.
+  # Used when hardware.simulated is True.
+  # [Optional, defaults to a blank launch file if not specified]
+  # simulated_robot_driver_persist_launch_file:
+  #   package: "kinova_gen2"
+  #   path:
+  # simulated_hardware_launch_file:
+  #   package: "kinova_gen2"
+  #   path:
+
+  # Parameters used to configure the robot description through XACRO.
+  # A URDF and SRDF are both required.
+  # [Required]
+  robot_description:
+    urdf:
+      package: "kinova_gen2"
+      path: "config/moveit/j2n6s300.urdf.xacro"
+    srdf:
+      package: "kinova_gen2"
+      path: "config/moveit/j2n6s300.srdf"
+    # urdf_params:
+    #   - arm: "gen2"
+    #   - dof: "7"
+    #   - vision: "false"
+    #   - robot_ip: ""
+    #   - gripper: "robotiq_2f_85"
+    #   - username: "admin"
+    #   - password: "admin"
+    #   - port: "10000"
+    #   - port_realtime: "10001"
+    #   - session_inactivity_timeout_ms: "60000"
+    #   - connection_inactivity_timeout_ms: "2000"
+    #   - use_fake_hardware: "true"
+    #   - fake_sensor_commands: "false"
+    #   - external_camera: "true"
+    #   - wrist_realsense: "true"
+    #   - use_internal_bus_gripper_comm: "false"
+
+# Sets ROS global params for launch.
+# [Optional]
+ros_global_params:
+  # Whether or not to use simulated time.
+  # [Optional, default=False]
+  use_sim_time: True
+
+# This Configures moveit params that are in moveit_config.py
+moveit_params:
+  joint_group_name: "arm"
+
+  ompl_planning:
+    package: "kinova_gen2"
+    path: "config/moveit/ompl_planning.yaml"
+  # stomp_planning:
+  #   package: "kinova_gen2"
+  #   path: "config/moveit/stomp_planning.yaml"
+  kinematics:
+    package: "kinova_gen2"
+    path: "config/moveit/pose_ik_distance.yaml"
+  servo:
+    package: "kinova_gen2"
+    path: "config/moveit/kinova_gen2_servo.yaml"
+  # sensors_3d:
+  #   package: "kinova_gen2"
+  #   path: "config/moveit/sensors_3d.yaml"
+  joint_limits:
+    package: "kinova_gen2"
+    path: "config/moveit/joint_limits.yaml"
+  servo_joint_limits:
+    package: "kinova_gen2"
+    path: "config/moveit/servo_joint_limits.yaml"
+
+  publish:
+    planning_scene: True
+    geometry_updates: True
+    state_updates: True
+    transforms_updates: True
+
+  trajectory_execution:
+    manage_controllers: True
+    allowed_execution_duration_scaling: 2.0
+    allowed_goal_duration_margin: 5.0
+    allowed_start_tolerance: 0.01
+
+# This configures what controllers gets run at startup
+ros2_control:
+  config:
+    package: "kinova_gen2"
+    path: "config/control/ros2_control.yaml"
+  # Load and start these controllers so they can be used immediately.
+  controllers_active_at_startup:
+    - "hand_controller"
+    - "joint_state_broadcaster"
+    - "servo_controller"
+  controllers_inactive_at_startup:
+    - "joint_trajectory_controller"
+
+objectives:
+  behavior_loader_plugins:
+    # This plugin will load the core MoveIt Pro behaviors.
+    # Add additional plugin loaders as needed.
+    core:
+      - "moveit_studio::behaviors::CoreBehaviorsLoader"
+      - "moveit_studio::behaviors::MTCCoreBehaviorsLoader"
+      - "moveit_studio::behaviors::ServoBehaviorsLoader"
+      - "moveit_studio::behaviors::VisionBehaviorsLoader"
+      - "moveit_studio::behaviors::ConverterBehaviorsLoader"
+  objective_library_paths:
+    core_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/core"
+    motion_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/motion"
+    perception_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/perception"
+    sim_objectives:
+      package_name: "kinova_gen2"
+      relative_path: "objectives"
+  waypoints_file:
+    package_name: "kinova_gen2"
+    relative_path: "waypoints/waypoints.yaml"

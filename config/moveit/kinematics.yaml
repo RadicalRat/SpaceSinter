@@ -1,0 +1,8 @@
+arm:
+  kinematics_solver: pose_ik_plugin/PoseIKPlugin
+  solve_mode: "first_found"  # See solve modes below.
+  target_tolerance: 0.001    # Maximum error in meters allowed for the solution.
+gripper:
+  kinematics_solver: pose_ik_plugin/PoseIKPlugin
+  solve_mode: "first_found"  # See solve modes below.
+  target_tolerance: 0.001    # Maximum error in meters allowed for the solution.
