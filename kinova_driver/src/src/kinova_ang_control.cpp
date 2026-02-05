@@ -1,19 +1,12 @@
 #include "../include/kinova/KinovaTypes.h"
 #include <iostream>
-#ifdef __linux__ 
+
 #include <dlfcn.h>
 #include <vector>
 #include "../include/kinova/Kinova.API.USBCommLayerUbuntu.h"
 #include "../include/kinova/Kinova.API.USBCommandLayerUbuntu.h"
 #include <stdio.h>
 #include <unistd.h>
-#elif _WIN32
-#include <Windows.h>
-#include "CommunicationLayer.h"
-#include "CommandLayer.h"
-#include <conio.h>
-#include <iostream>
-#endif
 
 
 using namespace std;
