@@ -18,7 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <cmath>
 
 #include "hardware_interface/handle.hpp"
 #include "hardware_interface/hardware_info.hpp"
@@ -30,6 +30,10 @@
 #include "rclcpp/time.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
+
+
+// kinova includes
+#include "kinova_api/KinovaTypes.h"
 
 
 namespace kinova_driver
@@ -68,7 +72,7 @@ private:
   // TODO: add parameters for hardware interface
     std::vector<double> hw_positions_;
     std::vector<double> hw_velocities_;
-    std::vector<double> hw_effort_;
+    std::vector<double> hw_efforts_;
     std::vector<double> hw_commands_; //Velocity commands
 
     //A handle to the API.

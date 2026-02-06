@@ -50,7 +50,7 @@ Purpose:
 
 
 
-namespace roseybot_arduino_interface
+namespace kinova_driver
 {
 
 
@@ -60,7 +60,7 @@ Performs:
 
 */
 
-hardware_interface::CallbackReturn RoseyBotSystemHardware::on_init(const hardware_interface::HardwareInfo & info) {
+hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_interface::HardwareInfo & info) {
 
   if (hardware_interface::SystemInterface::on_init(info) != hardware_interface::CallbackReturn::SUCCESS) {
     return hardware_interface::CallbackReturn::ERROR;
@@ -112,7 +112,7 @@ Creates the state interfaces for the hardware interface. Links the state variabl
 */
 
 
-std::vector<hardware_interface::StateInterface> RoseyBotSystemHardware::export_state_interfaces()
+std::vector<hardware_interface::StateInterface> KinovaSystemHardware::export_state_interfaces()
 {
   std::vector<hardware_interface::StateInterface> state_interfaces;
     
@@ -125,7 +125,7 @@ std::vector<hardware_interface::StateInterface> RoseyBotSystemHardware::export_s
         info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &hw_velocities_[i]));
 
     state_interfaces.emplace_back(hardware_interface::StateInterface(
-        info_.joints[i].name, hardware_interface::HW_IF_EFFORT, &hw_effort_[i]));
+        info_.joints[i].name, hardware_interface::HW_IF_EFFORT, &hw_efforts_[i]));
   }
 
   return state_interfaces;
@@ -137,7 +137,7 @@ std::vector<hardware_interface::StateInterface> RoseyBotSystemHardware::export_s
 Creates the command interfaces for the hardware interface. Links the state variable.
 */
 
-std::vector<hardware_interface::CommandInterface> RoseyBotSystemHardware::export_command_interfaces()
+std::vector<hardware_interface::CommandInterface> KinovaSystemHardware::export_command_interfaces()
 {
   std::vector<hardware_interface::CommandInterface> command_interfaces;
   
@@ -161,7 +161,7 @@ Performs:
   - sets active device to Kinova arm (if found)
 */
 
-hardware_interface::CallbackReturn RoseyBotSystemHardware::on_configure(
+hardware_interface::CallbackReturn KinovaSystemHardware::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   
@@ -170,7 +170,7 @@ hardware_interface::CallbackReturn RoseyBotSystemHardware::on_configure(
 	int devicesCount = MyGetDevices(list, result);
 
   if (devicesCount > 0) {
-    std::cout << "Found a robot on the USB bus (" << list[i].SerialNumber << ")" << std::endl;
+    std::cout << "Found a robot on the USB bus (" << list[0].SerialNumber << ")" << std::endl;
 
     MySetActiveDevice(list[0]);
 
@@ -194,15 +194,15 @@ Performs:
   - set all command interfaces to 0
 */
 
-hardware_interface::CallbackReturn RoseyBotSystemHardware::on_activate(
+hardware_interface::CallbackReturn KinovaSystemHardware::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   
-  std::cout << "Activiating" << std::cout;
+  std::cout << "Activiating" << std::endl;
 
   int result = (*MyInitAPI)();
 
-	cout << "Initialization's result :" << result << endl;
+	std::cout << "Initialization's result :" << result << std::endl;
 
   RCLCPP_INFO(get_logger(), "Successfully activated!");
 
@@ -220,14 +220,14 @@ Performs:
   - closes library connection to commandLayer_handle
 */
 
-hardware_interface::CallbackReturn RoseyBotSystemHardware::on_deactivate(
+hardware_interface::CallbackReturn KinovaSystemHardware::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   
   // close kinova API connection to arm
   int result = (*MyCloseAPI)();
 
-  cout << "Initialization's result :" << result << endl;
+  std::cout << "Initialization's result :" << result << std::endl;
 
   RCLCPP_INFO(get_logger(), "Successfully deactivated!");
 
@@ -244,7 +244,7 @@ Performs:
   - closes library connection to commandLayer_handle
 */
 
-hardware_interface::CallbackReturn RoseyBotSystemHardware::on_cleanup(
+hardware_interface::CallbackReturn KinovaSystemHardware::on_cleanup(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   
@@ -268,7 +268,7 @@ Performs:
 
 */
 
-hardware_interface::return_type RoseyBotSystemHardware::read(
+hardware_interface::return_type KinovaSystemHardware::read(
 const rclcpp::Time & /*time*/, const rclcpp::Duration & period) {
   
   // 
@@ -285,32 +285,32 @@ const rclcpp::Time & /*time*/, const rclcpp::Duration & period) {
   // update joint 1;
   hw_positions_[0] = degreesToRadians(current_pos.Actuators.Actuator1);
   hw_velocities_[0] = kinovaVelocityToRos(current_vel.Actuators.Actuator1);
-  hw_effort_[0] = current_torq.Actuators.Actuator1;
+  hw_efforts_[0] = current_torq.Actuators.Actuator1;
 
   // update joint 2:
   hw_positions_[1] = degreesToRadians(current_pos.Actuators.Actuator2);
   hw_velocities_[1] = kinovaVelocityToRos(current_vel.Actuators.Actuator2);
-  hw_effort_[1] = current_torq.Actuators.Actuator2;
+  hw_efforts_[1] = current_torq.Actuators.Actuator2;
 
   // update joint 3:
   hw_positions_[2] = degreesToRadians(current_pos.Actuators.Actuator3);
   hw_velocities_[2] = kinovaVelocityToRos(current_vel.Actuators.Actuator3);
-  hw_effort_[2] = current_torq.Actuators.Actuator3;
+  hw_efforts_[2] = current_torq.Actuators.Actuator3;
 
   // update joint 4:
   hw_positions_[3] = degreesToRadians(current_pos.Actuators.Actuator4);
   hw_velocities_[3] = kinovaVelocityToRos(current_vel.Actuators.Actuator4);
-  hw_effort_[3] = current_torq.Actuators.Actuator4;
+  hw_efforts_[3] = current_torq.Actuators.Actuator4;
 
   // update joint 5:
   hw_positions_[4] = degreesToRadians(current_pos.Actuators.Actuator5);
   hw_velocities_[4] = kinovaVelocityToRos(current_vel.Actuators.Actuator5);
-  hw_effort_[4] = current_torq.Actuators.Actuator5;
+  hw_efforts_[4] = current_torq.Actuators.Actuator5;
 
   // update joint 6:
   hw_positions_[5] = degreesToRadians(current_pos.Actuators.Actuator6);
   hw_velocities_[5] = kinovaVelocityToRos(current_vel.Actuators.Actuator6);
-  hw_effort_[5] = current_torq.Actuators.Actuator6;
+  hw_efforts_[5] = current_torq.Actuators.Actuator6;
 
   return hardware_interface::return_type::OK;
 }
@@ -325,7 +325,7 @@ Performs:
 
 */
 
-hardware_interface::return_type roseybot_arduino_interface ::RoseyBotSystemHardware::write(
+hardware_interface::return_type KinovaSystemHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
   // create trajectory command to send
