@@ -1,33 +1,65 @@
+# SpaceSinter: System for Solar Sintering of Lunar Regolith <!-- omit in toc -->
+
+## Table of Contents <!-- omit in toc -->
 - [Purpose](#purpose)
 - [Requirements](#requirements)
 - [File System](#file-system)
-- [*Moveit! Pro*](#moveit-pro)
+- [Hardware Setup](#hardware-setup)
+- [*MoveIt Pro*](#moveit-pro)
 - [ROS2 Hardware Drivers](#ros2-hardware-drivers)
-- [How to use the SpaceSinter Stack](#how-to-use-the-spacesinter-stack)
+- [Useage](#useage)
 
 
-# Purpose
-This code stack was developed for the SolarSinter senior design team at the Colorado School of Mines. This project was the development of a road building system to concentrate solar energy to "melt" lunar regolith into glassy roads as a possible avenue for lunar infrastructure. This system utilizes a Kinova Jaco Gen2 arm for the deployment and manuvering of the fresnel lens. Software was created to connect this arm to ROS2 *MoveIt! Pro*, in order to have precise control of the arm and planned behaviors.
+## Purpose
+This code stack was developed for the **SolarSinter** senior design team at the Colorado School of Mines. The project goal was the development of a road-building system to concentrate solar energy and "sinter" (melt) lunar regolith into glassy roads for lunar infrastructure.
 
-# Requirements
-This software stack runs on Ubuntu 24.04 with ROS2 Jazzy. Due to the degredation of the [kinova-ros](https://github.com/Kinovarobotics/kinova-ros) drivers, meant for ROS1, limited capabilities are available. Furthermore, this stack is not intended to work outside of the Ubuntu ecosystem, as several libraries used do not have native Windows counterparts.
+This system utilizes a **Kinova Jaco Gen2 (6-DOF)** arm for the deployment and maneuvering of a large Fresnel lens. Custom software was developed to bridge this legacy hardware with **ROS 2 Jazzy** and **MoveIt Pro**, enabling precise path planning, obstacle avoidance, and behavior-tree-based autonomy.
 
-MoveIt! Pro is required for pathplanning and behavior-tree management. Install directions can be found [here](https://docs.picknik.ai/software_installation/). This software stack handles the ROS2 ecosystem via docker container.
+## Requirements
+* **OS:** Ubuntu 24.04 (Noble Numbat)
+* **Middleware:** ROS 2 Jazzy Jalisco
+* **Software:** MoveIt Pro (Release 2.0+)
+* **Hardware:** Kinova Jaco Gen2 6-DOF arm
 
-# File System
-* ```kinova_driver``` : This directory contains the ROS2 hardware drivers for the kinova Gen2 Jaco arm. This directory also contains all relevant kinova API libraries used to control the arm.
-* ```kinova_moveit```: This directory contains the moveit configuration packages for use with *MoveIt! Pro*.
-  * ```config```: This directory contains all of the configuration yamls for drivers, and moveit algorithms. Also contains robot srdf files and the ros2_control srdf
-  * ```description```: This directory contains all of the mesh files, robot urdfs, and mujuco configuration files. Also contains all of the world simulation files.
-  * ```launch```: This directory contains all launch files for *MoveIt! Pro*.
-  * ```objectives```: This directory contains any robot behaviors for *MoveIt! Pro*.
-  * ```test```: This directory contains any python unit tests for this package.
-  * ```waypoints```: This directory contains key waypoints for the SpaceSinter System.
+**Note:** Due to the obsolescence of the original ROS 1 [kinova-ros](https://github.com/Kinovarobotics/kinova-ros) drivers, this repository contains a custom hardware interface rewritten for `ros2_control`. This stack is strictly for Linux/Docker environments and does not support Windows.
 
-# *Moveit! Pro*
+## File System
+* `kinova_driver` : This directory contains the ROS2 hardware drivers for the kinova Gen2 Jaco arm. This directory also contains all relevant kinova API libraries used to control the arm.
+* `kinova_moveit`: This directory contains the moveit configuration packages for use with *MoveIt Pro*.
+  * `config`: This directory contains all of the configuration yamls for drivers, and moveit algorithms. Also contains robot srdf files and the ros2_control srdf
+  * `description`: This directory contains all of the mesh files, robot urdfs, and mujuco configuration files. Also contains all of the world simulation files.
+  * `launch`: This directory contains all launch files for *MoveIt Pro*.
+  * `objectives`: This directory contains any robot behaviors for *MoveIt Pro*.
+  * `test`: This directory contains any python unit tests for this package.
+  * `waypoints`: This directory contains key waypoints for the SpaceSinter System.
+
+## Hardware Setup
+To allow ROS 2 to communicate with the Kinova arm via USB without `sudo`, you must install udev rules.
+
+1.  Create a file at `/etc/udev/rules.d/99-kinova.rules`:
+    ```bash
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="2032", ATTRS{idProduct}=="0005", MODE="0666"
+    ```
+2.  Reload the rules:
+    ```bash
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    ```
+
+**need to verify**
 
 
-# ROS2 Hardware Drivers
+## *MoveIt Pro*
+This repository is designed to run inside the standard MoveIt Pro Docker environment. 
+
+* **Objectives:** The core logic is defined in `kinova_moveit/objectives`. These behavior trees handle the sintering pattern (e.g., raster scans).
+* **Configuration:** The `spacesinter_site_config` package bundles the robot description and the site map (if applicable).
+
+To install MoveIt Pro, refer to the [official documentation](https://docs.picknik.ai/software_installation/).
+
+
+
+## ROS2 Hardware Drivers
 * The command interfaces exposed are:
     * ```velocity```: Exposed control of angular velocity for joints 1-6, expressed in ```rad/s```.
   * The state interfaces exposed are:
@@ -36,4 +68,4 @@ MoveIt! Pro is required for pathplanning and behavior-tree management. Install d
     * ```effort```: Exposed joint effort for joints 1-6, expressed in ```N*m```.
 
 
-# How to use the SpaceSinter Stack
+## Useage
