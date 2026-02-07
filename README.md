@@ -1,5 +1,3 @@
-# Table of Contents
-- [Table of Contents](#table-of-contents)
 - [Purpose](#purpose)
 - [Requirements](#requirements)
 - [File System](#file-system)

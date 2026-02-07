@@ -35,6 +35,10 @@
 // kinova includes
 #include "kinova_api/KinovaTypes.h"
 
+// MAY NEED TO FIX FOR ARM SYSTEMS: check for rpi3 library build on github
+#include "kinova_api/Kinova.API.USBCommLayerUbuntu.h"
+#include "kinova_api/Kinova.API.USBCommandLayerUbuntu.h"
+
 
 namespace kinova_driver
 {

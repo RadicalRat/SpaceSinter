@@ -167,6 +167,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_configure(
   
   KinovaDevice list[MAX_KINOVA_DEVICE];
 
+  int result;
 	int devicesCount = MyGetDevices(list, result);
 
   if (devicesCount > 0) {
@@ -353,3 +354,7 @@ hardware_interface::return_type KinovaSystemHardware::write(
 }
 
 }
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(
+  kinova_driver::KinovaSystemHardware, hardware_interface::SystemInterface)
