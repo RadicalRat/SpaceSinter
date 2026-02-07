@@ -29,11 +29,11 @@ MoveIt! Pro is required for pathplanning and behavior-tree management. Install d
 
 # ROS2 Hardware Drivers
 * The command interfaces exposed are:
-    * ```velocity```: Exposed control of angular velocity for joints 1-6, expressed in rad/s.
+    * ```velocity```: Exposed control of angular velocity for joints 1-6, expressed in ```rad/s```.
   * The state interfaces exposed are:
-    * ```position```: Exposed angular position for joints 1-6, expressed in rad.
-    * ```velocity```: Exposed angular velocity for joints 1-6, expressed in rad.
-    * ```effort```: Exposed joint effort for joints 1-6, expressed in N*m.
+    * ```position```: Exposed angular position for joints 1-6, expressed in ```rad```.
+    * ```velocity```: Exposed angular velocity for joints 1-6, expressed in ```rad/s```.
+    * ```effort```: Exposed joint effort for joints 1-6, expressed in ```N*m```.
 
 
 # How to use the SpaceSinter Stack
