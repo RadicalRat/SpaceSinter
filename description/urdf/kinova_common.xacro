@@ -15,17 +15,17 @@
     xmlns:physics="http://playerstage.sourceforge.net/gazebo/xmlschema/#physics"
 	xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<xacro:include filename="$(find kinova_gen2)/description/urdf/kinova_inertial.xacro" />
+<xacro:include filename="$(find space_sinter)/description/urdf/kinova_inertial.xacro" />
 
 
     <xacro:property name="J_PI" value="3.1415926535897931" />
 
-    <xacro:macro name="kinova_gen2link" params="link_name link_mesh ring_mesh:=ring_big use_ring_mesh:=false mesh_no">
+    <xacro:macro name="space_sinterlink" params="link_name link_mesh ring_mesh:=ring_big use_ring_mesh:=false mesh_no">
         <link name="${link_name}">
       <visual>
         <geometry>
           <mesh
-            filename="file://$(find kinova_gen2)/description/meshes/${link_mesh}.STL"/>
+            filename="file://$(find space_sinter)/description/meshes/${link_mesh}.STL"/>
         </geometry>
                 <material name="carbon_fiber">
                     <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
@@ -37,7 +37,7 @@
          <visual>
         <geometry>
           <mesh
-            filename="file://$(find kinova_gen2)/description/meshes/${ring_mesh}.STL"/>
+            filename="file://$(find space_sinter)/description/meshes/${ring_mesh}.STL"/>
         </geometry>
        </visual>
 	    </xacro:if>
@@ -45,7 +45,7 @@
       <collision>
         <geometry>
           <mesh
-            filename="file://$(find kinova_gen2)/description/meshes/${link_mesh}.STL"/>
+            filename="file://$(find space_sinter)/description/meshes/${link_mesh}.STL"/>
         </geometry>
       </collision>
 						<xacro:kinova_inertial mesh_no="${mesh_no}"/>
@@ -62,7 +62,7 @@
     type is fixed, and that the fixed parameter is set consistently.
   -->
   <xacro:property name="dummy_default_value" value="1234567890"/>
-  <xacro:macro name="kinova_gen2joint" params="joint_name
+  <xacro:macro name="space_sinterjoint" params="joint_name
                                               type
                                               parent
                                               child
@@ -141,7 +141,7 @@
 
     <xacro:macro name="kinova_finger" params="prefix finger_number hand finger_origin_xyz finger_origin_rpy">
 
-        <xacro:kinova_gen2link link_name="${prefix}link_finger_${finger_number}" link_mesh="finger_proximal" mesh_no="57"/>
+        <xacro:space_sinterlink link_name="${prefix}link_finger_${finger_number}" link_mesh="finger_proximal" mesh_no="57"/>
 
         <joint name="${prefix}joint_finger_${finger_number}" type="revolute">
             <parent link="${hand}"/>
@@ -163,7 +163,7 @@
 
 
 
-        <xacro:kinova_gen2link link_name="${prefix}link_finger_tip_${finger_number}" link_mesh="finger_distal" mesh_no="58"/>
+        <xacro:space_sinterlink link_name="${prefix}link_finger_tip_${finger_number}" link_mesh="finger_distal" mesh_no="58"/>
 
         <joint name="${prefix}joint_finger_tip_${finger_number}" type="revolute">
             <parent link="${prefix}link_finger_${finger_number}"/>

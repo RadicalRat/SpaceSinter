@@ -1,14 +1,75 @@
-- name: Home
+- description: ''
   favorite: true
   joint_group_names:
-    - arm
+  - manipulator
   joint_state:
+    effort: []
     header:
       frame_id: world
       stamp:
-        sec: 0
         nanosec: 0
-    name: [j2n6s300_joint_1, j2n6s300_joint_2, j2n6s300_joint_3, j2n6s300_joint_4, j2n6s300_joint_5, j2n6s300_joint_6]
-    position: [7.2854474427322627e-05, 0.0060998872530424308, -3.1250605484909082, -2.5051932931762071, -2.7164243118882329e-05, 0.95966324117024648, 1.5699864595074029]
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - 7.285447442732263e-05
+    - 0.006099887253042431
+    - -3.125060548490908
+    - -2.505193293176207
+    - -2.716424311888233e-05
+    - 0.9596632411702465
+    - 1.569986459507403
     velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Home
+- description: ''
+  favorite: false
+  joint_group_names:
+  - manipulator
+  joint_state:
     effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - 4.537544978772992
+    - 2.411017250823527
+    - 4.778633608098717
+    - 2.9435574018007995
+    - 0.8249126946292077
+    - 4.309549544421919
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: PointDown

@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="j2n6s300">
-    <xacro:arg name="initial_positions_file" default="$(find kinova_gen2)/config/initial_positions.yaml" />
+    <xacro:arg name="initial_positions_file" default="$(find space_sinter)/config/initial_positions.yaml" />
 
     <!-- Import j2n6s300 urdf file -->
-    <xacro:include filename="$(find kinova_gen2)/description/urdf/j2n6s300_standalone.xacro" />
+    <xacro:include filename="$(find space_sinter)/description/urdf/j2n6s300_standalone.xacro" />
 
     <!-- Import control_xacro -->
-    <xacro:include filename="$(find kinova_gen2)/config/moveit/j2n6s300.ros2_control.xacro" />
+    <xacro:include filename="$(find space_sinter)/config/moveit/j2n6s300.ros2_control.xacro" />
 
 
     <xacro:j2n6s300_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>

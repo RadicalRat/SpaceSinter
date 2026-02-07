@@ -22,17 +22,17 @@ hardware:
   # Specify additional launch files for running the robot with real hardware.
   # [Optional, defaults to a blank launch file if not specified]
   # robot_driver_persist_launch_file:
-  #   package: "kinova_gen2"
+  #   package: "space_sinter"
   #   path:
 
   # Specify any additional launch files for running the robot in simulation mode.
   # Used when hardware.simulated is True.
   # [Optional, defaults to a blank launch file if not specified]
   # simulated_robot_driver_persist_launch_file:
-  #   package: "kinova_gen2"
+  #   package: "space_sinter"
   #   path:
   # simulated_hardware_launch_file:
-  #   package: "kinova_gen2"
+  #   package: "space_sinter"
   #   path:
 
   # Parameters used to configure the robot description through XACRO.
@@ -40,10 +40,10 @@ hardware:
   # [Required]
   robot_description:
     urdf:
-      package: "kinova_gen2"
+      package: "space_sinter"
       path: "config/moveit/j2n6s300.urdf.xacro"
     srdf:
-      package: "kinova_gen2"
+      package: "space_sinter"
       path: "config/moveit/j2n6s300.srdf"
     # urdf_params:
     #   - arm: "gen2"
@@ -63,38 +63,30 @@ hardware:
     #   - wrist_realsense: "true"
     #   - use_internal_bus_gripper_comm: "false"
 
-# Sets ROS global params for launch.
-# [Optional]
-ros_global_params:
-  # Whether or not to use simulated time.
-  # [Optional, default=False]
-  use_sim_time: True
-
 # This Configures moveit params that are in moveit_config.py
 moveit_params:
   joint_group_name: "arm"
-
-  ompl_planning:
-    package: "kinova_gen2"
-    path: "config/moveit/ompl_planning.yaml"
-  # stomp_planning:
-  #   package: "kinova_gen2"
-  #   path: "config/moveit/stomp_planning.yaml"
   kinematics:
-    package: "kinova_gen2"
-    path: "config/moveit/pose_ik_distance.yaml"
-  servo:
-    package: "kinova_gen2"
-    path: "config/moveit/kinova_gen2_servo.yaml"
-  # sensors_3d:
-  #   package: "kinova_gen2"
-  #   path: "config/moveit/sensors_3d.yaml"
+    package: "space_sinter"
+    path: "config/moveit/kinematics.yaml"
   joint_limits:
-    package: "kinova_gen2"
+    package: "space_sinter"
     path: "config/moveit/joint_limits.yaml"
+  servo:
+    package: "space_sinter"
+    path: "config/moveit/space_sinter_servo.yaml"
   servo_joint_limits:
-    package: "kinova_gen2"
+    package: "space_sinter"
     path: "config/moveit/servo_joint_limits.yaml"
+  ompl_planning:
+    package: "space_sinter"
+    path: "config/moveit/ompl_planning.yaml"
+  sensors_3d:
+    package: "space_sinter"
+    path: "config/moveit/sensors_3d.yaml"
+  pose_jog:
+    package: "space_sinter"
+    path: "config/moveit/pose_jog.yaml"
 
   publish:
     planning_scene: True
@@ -111,15 +103,18 @@ moveit_params:
 # This configures what controllers gets run at startup
 ros2_control:
   config:
-    package: "kinova_gen2"
+    package: "space_sinter"
     path: "config/control/ros2_control.yaml"
   # Load and start these controllers so they can be used immediately.
   controllers_active_at_startup:
-    - "hand_controller"
+    - "force_torque_sensor_broadcaster"
+    - "robotiq_gripper_controller"
     - "joint_state_broadcaster"
     - "servo_controller"
   controllers_inactive_at_startup:
     - "joint_trajectory_controller"
+    - "joint_trajectory_admittance_controller"
+    - "velocity_force_controller"
 
 objectives:
   behavior_loader_plugins:
@@ -142,8 +137,16 @@ objectives:
       package_name: "moveit_pro_objectives"
       relative_path: "objectives/perception"
     sim_objectives:
-      package_name: "kinova_gen2"
+      package_name: "space_sinter"
       relative_path: "objectives"
   waypoints_file:
-    package_name: "kinova_gen2"
+    package_name: "space_sinter"
     relative_path: "waypoints/waypoints.yaml"
+
+
+# Sets ROS global params for launch.
+# [Optional]
+# ros_global_params:
+#   # Whether or not to use simulated time.
+#   # [Optional, default=False]
+#   use_sim_time: True

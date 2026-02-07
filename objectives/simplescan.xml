@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="SimpleScan">
+  <!--//////////-->
+  <BehaviorTree
+    ID="SimpleScan"
+    _description="A simple scanning objective to demonstrate scanning capabilities"
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_controller"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+        waypoint_name="PointDown"
+      />
+      <Action
+        ID="CreateStampedPose"
+        stamped_pose="{stamped_pose}"
+        reference_frame="root"
+        position_xyz="0;0.3;0.1"
+        orientation_xyzw="0.000; 0.000; 0.000; 1.000"
+      />
+      <Action
+        ID="VisualizePose"
+        marker_lifetime="0.000000"
+        marker_name="pose"
+        marker_size="0.100000"
+        pose="{stamped_pose}"
+        marker_text="scan_pose"
+        _skipIf="true"
+      />
+      <Action
+        ID="GenerateCoveragePath"
+        vector_of_poses="{pose_stamped_vector}"
+        bottom_right_corner="{stamped_pose}"
+        height="0.3"
+        stride_distance="0.01"
+        width="0.3"
+      />
+      <Action
+        ID="VisualizePath"
+        marker_lifetime="0.000000"
+        marker_name="path"
+        path="{pose_stamped_vector}"
+        pose_marker_size="0.100000"
+        show_poses="false"
+      />
+      <Action
+        ID="PlanCartesianPath"
+        acceleration_scale_factor="1.000000"
+        blending_radius="0.00375"
+        ik_cartesian_space_density="0.010000"
+        ik_joint_space_density="0.100000"
+        joint_trajectory_msg="{joint_trajectory_msg}"
+        path="{pose_stamped_vector}"
+        planning_group_name="manipulator"
+        position_only="true"
+        trajectory_sampling_rate="100"
+        velocity_scale_factor="1.000000"
+        tip_links="j2n6s300_end_effector;"
+      />
+      <Action
+        ID="ExecuteFollowJointTrajectory"
+        execute_follow_joint_trajectory_action_name="/joint_trajectory_controller/follow_joint_trajectory"
+        goal_duration_tolerance="-1.000000"
+        goal_position_tolerance="0.000000"
+        goal_time_tolerance="0.000000"
+        joint_trajectory_msg="{joint_trajectory_msg}"
+        trajectory_remainder="{joint_trajectory_remainder}"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="SimpleScan">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>
