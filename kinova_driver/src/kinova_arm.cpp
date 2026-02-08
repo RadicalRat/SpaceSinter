@@ -41,10 +41,14 @@ Purpose:
 
 // helper libraries
 #include <dlfcn.h>
+#include <libgen.h>
 #include <vector>
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
+
+// Add a small C symbol we can take the address of for dladdr
+extern "C" void kinova_driver__dladdr_helper() {}
 
 
 
@@ -66,19 +70,57 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_
     return hardware_interface::CallbackReturn::ERROR;
   }
 
-  //Load the api via commandLayer_handle
-  commandLayer_handle = dlopen("Kinova.API.USBCommandLayerUbuntu.so",RTLD_NOW|RTLD_GLOBAL);
+  // Find the directory of this shared object (the plugin) so we can open vendor .so next to it
+  Dl_info dl_info;
+  // use address of a local C symbol (function) to get the shared object path
+  uintptr_t helper_addr = reinterpret_cast<uintptr_t>(reinterpret_cast<void (*)()>(kinova_driver__dladdr_helper));
+  if (dladdr(reinterpret_cast<void*>(helper_addr), &dl_info) == 0) {
+    RCLCPP_ERROR(LOGGER, "dladdr failed");
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  std::string plugin_path = dl_info.dli_fname;
+  std::string plugin_dir = dirname(const_cast<char*>(plugin_path.c_str()));
 
-	//We load the functions from the library
-	MyInitAPI = (int (*)()) dlsym(commandLayer_handle,"InitAPI");
-	MyCloseAPI = (int (*)()) dlsym(commandLayer_handle,"CloseAPI");
-	MyGetDevices = (int (*)(KinovaDevice devices[MAX_KINOVA_DEVICE], int &result)) dlsym(commandLayer_handle,"GetDevices");
-	MySetActiveDevice = (int (*)(KinovaDevice devices)) dlsym(commandLayer_handle,"SetActiveDevice");
-	MySendBasicTrajectory = (int (*)(TrajectoryPoint)) dlsym(commandLayer_handle,"SendBasicTrajectory");
-  MyGetAngularPosition = (int(*)(AngularPosition &)) dlsym(commandLayer_handle, "GetAngularPosition");
-	MyGetAngularVelocity = (int(*)(AngularPosition &)) dlsym(commandLayer_handle, "GetAngularVelocity");
-  MyGetAngularForce = (int (*)(AngularPosition &Response)) dlsym(commandLayer_handle,"GetAngularForce");
-  
+  // try vendor filenames that exist in your package lib
+  const char *candidates[] = {
+    "USBCommandLayerUbuntu.so",
+    "EthCommandLayerUbuntu.so",
+    "Kinova.API.USBCommandLayerUbuntu.so",
+    nullptr
+  };
+
+  commandLayer_handle = nullptr;
+  for (const char **p = candidates; *p; ++p) {
+    std::string full = plugin_dir + "/" + *p;
+    commandLayer_handle = dlopen(full.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (commandLayer_handle) {
+      RCLCPP_INFO(LOGGER, "dlopened vendor library: %s", full.c_str());
+      break;
+    }
+  }
+  if (!commandLayer_handle) {
+    RCLCPP_ERROR(LOGGER, "Failed dlopen vendor libs: %s", dlerror());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  // resolve symbols from the vendor library (or RTLD_DEFAULT)
+  dlerror();
+  MyInitAPI = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "InitAPI"));
+  if (!MyInitAPI) { RCLCPP_ERROR(LOGGER, "InitAPI not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyCloseAPI = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "CloseAPI"));
+  if (!MyCloseAPI) { RCLCPP_ERROR(LOGGER, "CloseAPI not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyGetDevices = reinterpret_cast<int (*)(KinovaDevice[], int &)>(dlsym(RTLD_DEFAULT, "GetDevices"));
+  if (!MyGetDevices) { RCLCPP_ERROR(LOGGER, "GetDevices not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MySetActiveDevice = reinterpret_cast<int (*)(KinovaDevice)>(dlsym(RTLD_DEFAULT, "SetActiveDevice"));
+  if (!MySetActiveDevice) { RCLCPP_ERROR(LOGGER, "SetActiveDevice not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MySendBasicTrajectory = reinterpret_cast<int (*)(TrajectoryPoint)>(dlsym(RTLD_DEFAULT, "SendBasicTrajectory"));
+  if (!MySendBasicTrajectory) { RCLCPP_ERROR(LOGGER, "SendBasicTrajectory not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyGetAngularPosition = reinterpret_cast<int (*)(AngularPosition &)>(dlsym(RTLD_DEFAULT, "GetAngularPosition"));
+  if (!MyGetAngularPosition) { RCLCPP_ERROR(LOGGER, "GetAngularPosition not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyGetAngularVelocity = reinterpret_cast<int (*)(AngularPosition &)>(dlsym(RTLD_DEFAULT, "GetAngularVelocity"));
+  if (!MyGetAngularVelocity) { RCLCPP_ERROR(LOGGER, "GetAngularVelocity not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyGetAngularForce = reinterpret_cast<int (*)(AngularPosition &)>(dlsym(RTLD_DEFAULT, "GetAngularForce"));
+  if (!MyGetAngularForce) { RCLCPP_ERROR(LOGGER, "GetAngularForce not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
 
   //Verify that all functions has been loaded correctly
 	if ((MyInitAPI == NULL) || (MyCloseAPI == NULL) || (MyGetDevices == NULL) ||
@@ -225,6 +267,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_deactivate(
   
   // close kinova API connection to arm
   int result = (*MyCloseAPI)();
+  (void)result;
   
   // std::cout << "Initialization's result :" << result << std::endl;
 
@@ -335,6 +378,10 @@ hardware_interface::return_type KinovaSystemHardware::write(
 
   ang_command.Position.Type = ANGULAR_VELOCITY;
 
+  for (size_t i = 0; i < hw_commands_.size(); ++i) {
+    RCLCPP_INFO(LOGGER, "Joint %zu velocity command: %f", i+1, hw_commands_[i]);
+  }
+
   ang_command.Position.Actuators.Actuator1 = rosVelocityToKinova(hw_commands_[0]);
   ang_command.Position.Actuators.Actuator2 = rosVelocityToKinova(hw_commands_[1]);
   ang_command.Position.Actuators.Actuator3 = rosVelocityToKinova(hw_commands_[2]);
@@ -347,6 +394,9 @@ hardware_interface::return_type KinovaSystemHardware::write(
   ang_command.Position.Fingers.Finger3 = 0;
 
   MySendBasicTrajectory(ang_command);
+
+  int result = MySendBasicTrajectory(ang_command);
+  RCLCPP_INFO(LOGGER, "MySendBasicTrajectory result: %d", result);
 
   
   return hardware_interface::return_type::OK;
