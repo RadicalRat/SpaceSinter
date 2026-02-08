@@ -53,7 +53,7 @@ Purpose:
 namespace kinova_driver
 {
 
-
+const rclcpp::Logger LOGGER = rclcpp::get_logger("KinovaSystemHardware");
 /*
 Routine that runs when hardware interface is created
 Performs:
@@ -86,7 +86,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_
 		(MyGetAngularVelocity == NULL) || (MyGetAngularForce == NULL))
 
 	{
-		std::cout << "* * *  E R R O R   D U R I N G   I N I T I A L I Z A T I O N  * * *" << std::endl;
+    RCLCPP_INFO(LOGGER, "* * *  E R R O R   D U R I N G   A P I   I N I T I A L I Z A T I O N  * * *");
 		return hardware_interface::CallbackReturn::ERROR;
 	}
 
@@ -99,8 +99,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_
 
 
 
-
-  std::cout << "I N I T I A L I Z A T I O N   C O M P L E T E D" << std::endl;
+  RCLCPP_INFO(LOGGER, "I N I T I A L I Z A T I O N   C O M P L E T E D");
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -171,12 +170,13 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_configure(
 	int devicesCount = MyGetDevices(list, result);
 
   if (devicesCount > 0) {
-    std::cout << "Found a robot on the USB bus (" << list[0].SerialNumber << ")" << std::endl;
+    RCLCPP_INFO(LOGGER, "Found a robot on the USB bus (%s)",list[0].SerialNumber);
+    // std::cout << "Found a robot on the USB bus (" << list[0].SerialNumber << ")" << std::endl;
 
     MySetActiveDevice(list[0]);
 
   } else {
-    std::cout << "No robots found on the USB bus" << std::endl;
+    RCLCPP_ERROR(LOGGER, "No robots found on serial bus.");
     return hardware_interface::CallbackReturn::SUCCESS;
   }
 
@@ -198,14 +198,12 @@ Performs:
 hardware_interface::CallbackReturn KinovaSystemHardware::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  
-  std::cout << "Activiating" << std::endl;
+  RCLCPP_INFO(LOGGER, "Activating driver...");
 
   int result = (*MyInitAPI)();
+  RCLCPP_INFO(LOGGER, "API result: %i",result);
 
-	std::cout << "Initialization's result :" << result << std::endl;
-
-  RCLCPP_INFO(get_logger(), "Successfully activated!");
+  RCLCPP_INFO(LOGGER, "Successfully activated!");
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -227,10 +225,10 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_deactivate(
   
   // close kinova API connection to arm
   int result = (*MyCloseAPI)();
+  
+  // std::cout << "Initialization's result :" << result << std::endl;
 
-  std::cout << "Initialization's result :" << result << std::endl;
-
-  RCLCPP_INFO(get_logger(), "Successfully deactivated!");
+  RCLCPP_INFO(LOGGER, "Successfully deactivated!");
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -248,9 +246,10 @@ Performs:
 hardware_interface::CallbackReturn KinovaSystemHardware::on_cleanup(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  
-  std::cout << std::endl << "WARNING: Your robot is now set to angular control. If you use the joystick, it will be a joint by joint movement." << std::endl;
-	std::cout << std::endl << "C L O S I N G   A P I" << std::endl;
+  RCLCPP_INFO(LOGGER, "WARNING: Your robot is now set to angular control. If you use the joystick, it will be a joint by joint movement.");
+  //std::cout << std::endl << "WARNING: Your robot is now set to angular control. If you use the joystick, it will be a joint by joint movement." << std::endl;
+	RCLCPP_INFO(LOGGER, "C L O S I N G   A P I");
+  // std::cout << std::endl << "C L O S I N G   A P I" << std::endl;
 
 
   // close handle to kinova API
