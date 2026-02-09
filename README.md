@@ -36,7 +36,7 @@ This system utilizes a **Kinova Jaco Gen2 (6-DOF)** arm for the deployment and m
 ## Hardware Setup
 To allow ROS 2 to communicate with the Kinova arm via USB without `sudo`, you must install udev rules.
 
-1.  Create a file at `/etc/udev/rules.d/99-kinova.rules`:
+<!-- 1.  Create a file at `/etc/udev/rules.d/99-kinova.rules`:
     ```bash
     SUBSYSTEM=="usb", ATTRS{idVendor}=="2032", ATTRS{idProduct}=="0005", MODE="0666"
     ```
@@ -44,7 +44,7 @@ To allow ROS 2 to communicate with the Kinova arm via USB without `sudo`, you mu
     ```bash
     sudo udevadm control --reload-rules
     sudo udevadm trigger
-    ```
+    ``` -->
 
 **need to verify**
 
@@ -53,7 +53,7 @@ To allow ROS 2 to communicate with the Kinova arm via USB without `sudo`, you mu
 This repository is designed to run inside the standard MoveIt Pro Docker environment. 
 
 * **Objectives:** The core logic is defined in `kinova_moveit/objectives`. These behavior trees handle the sintering pattern (e.g., raster scans).
-* **Configuration:** The `spacesinter_site_config` package bundles the robot description and the site map (if applicable).
+* **Configuration:** The `space_sinter` package bundles the robot description and the site map (if applicable).
 
 To install MoveIt Pro, refer to the [official documentation](https://docs.picknik.ai/software_installation/).
 
