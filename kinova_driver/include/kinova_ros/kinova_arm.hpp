@@ -91,6 +91,10 @@ private:
     int(*MyGetAngularPosition)(AngularPosition &);
     int (*MyGetAngularVelocity)(AngularPosition &Response);
     int(*MyGetAngularForce)(AngularPosition &Response);
+    int (*MyStartControlAPI)(){nullptr};
+    int (*MyStopControlAPI)(){nullptr};
+    int (*MySetAngularControl)(){nullptr};
+    int (*MySendAdvanceTrajectory)(TrajectoryPoint){nullptr};
 
 
     static constexpr double TO_RAD = M_PI / 180.0;
@@ -107,11 +111,11 @@ private:
 
     // Special conversion for VELOCITIES
     double kinovaVelocityToRos(double kinova_deg_per_sec) const {
-    // Kinova Gen2 API often reports negative velocity as (360 - val)
-    // e.g. -10 deg/s might come in as 350.
-        if (kinova_deg_per_sec > 180.0) {
-            kinova_deg_per_sec -= 360.0;
-        }
+    // // Kinova Gen2 API often reports negative velocity as (360 - val)
+    // // e.g. -10 deg/s might come in as 350.
+    //     if (kinova_deg_per_sec > 180.0) {
+    //         kinova_deg_per_sec -= 360.0;
+    //     }
         return kinova_deg_per_sec * TO_RAD;
     }
 

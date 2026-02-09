@@ -121,13 +121,35 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_
   if (!MyGetAngularVelocity) { RCLCPP_ERROR(LOGGER, "GetAngularVelocity not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
   MyGetAngularForce = reinterpret_cast<int (*)(AngularPosition &)>(dlsym(RTLD_DEFAULT, "GetAngularForce"));
   if (!MyGetAngularForce) { RCLCPP_ERROR(LOGGER, "GetAngularForce not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+  MyStartControlAPI = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "StartControlAPI"));
+  if (!MyStartControlAPI) { RCLCPP_ERROR(LOGGER, "StartControlAPI not found: %s", dlerror()); return hardware_interface::CallbackReturn::ERROR; }
+
+  MyStopControlAPI = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "StopControlAPI"));
+  if (!MyStopControlAPI) {
+    RCLCPP_ERROR(LOGGER, "StopControlAPI not found: %s", dlerror());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  MySetAngularControl = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "SetAngularControl"));
+  if (!MySetAngularControl) {
+    RCLCPP_ERROR(LOGGER, "SetAngularControl not found: %s", dlerror());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  MySendAdvanceTrajectory = reinterpret_cast<int (*)(TrajectoryPoint)>(dlsym(RTLD_DEFAULT, "SendAdvanceTrajectory"));
+  if (!MySendAdvanceTrajectory) {
+    RCLCPP_ERROR(LOGGER, "SendAdvanceTrajectory not found: %s", dlerror());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
 
   //Verify that all functions has been loaded correctly
 	if ((MyInitAPI == NULL) || (MyCloseAPI == NULL) || (MyGetDevices == NULL) ||
-		(MySetActiveDevice == NULL) || (MySendBasicTrajectory == NULL) || (MyGetAngularPosition == NULL) ||
-		(MyGetAngularVelocity == NULL) || (MyGetAngularForce == NULL))
-
-	{
+        (MySetActiveDevice == NULL) || (MySendBasicTrajectory == NULL) || (MyGetAngularPosition == NULL) ||
+        (MyGetAngularVelocity == NULL) || (MyGetAngularForce == NULL) ||
+        (MyStartControlAPI == NULL) || (MyStopControlAPI == NULL) ||
+        (MySetAngularControl == NULL) || (MySendAdvanceTrajectory == NULL))
+  {
     RCLCPP_INFO(LOGGER, "* * *  E R R O R   D U R I N G   A P I   I N I T I A L I Z A T I O N  * * *");
 		return hardware_interface::CallbackReturn::ERROR;
 	}
@@ -206,6 +228,8 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   
+  MyInitAPI();
+
   KinovaDevice list[MAX_KINOVA_DEVICE];
 
   int result;
@@ -242,9 +266,9 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_activate(
 {
   RCLCPP_INFO(LOGGER, "Activating driver...");
 
-  int result = (*MyInitAPI)();
+  int result = MyStartControlAPI();
   RCLCPP_INFO(LOGGER, "API result: %i",result);
-
+  MySetAngularControl();
   RCLCPP_INFO(LOGGER, "Successfully activated!");
 
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -266,11 +290,9 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_deactivate(
 {
   
   // close kinova API connection to arm
-  int result = (*MyCloseAPI)();
-  (void)result;
   
   // std::cout << "Initialization's result :" << result << std::endl;
-
+  MyStopControlAPI();
   RCLCPP_INFO(LOGGER, "Successfully deactivated!");
 
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -289,6 +311,9 @@ Performs:
 hardware_interface::CallbackReturn KinovaSystemHardware::on_cleanup(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
+
+  int result = (*MyCloseAPI)();
+  (void)result;
   RCLCPP_INFO(LOGGER, "WARNING: Your robot is now set to angular control. If you use the joystick, it will be a joint by joint movement.");
   //std::cout << std::endl << "WARNING: Your robot is now set to angular control. If you use the joystick, it will be a joint by joint movement." << std::endl;
 	RCLCPP_INFO(LOGGER, "C L O S I N G   A P I");
@@ -378,9 +403,9 @@ hardware_interface::return_type KinovaSystemHardware::write(
 
   ang_command.Position.Type = ANGULAR_VELOCITY;
 
-  for (size_t i = 0; i < hw_commands_.size(); ++i) {
-    RCLCPP_INFO(LOGGER, "Joint %zu velocity command: %f", i+1, hw_commands_[i]);
-  }
+  // for (size_t i = 0; i < hw_commands_.size(); ++i) {
+  //   RCLCPP_INFO(LOGGER, "Joint %zu velocity command: %f", i+1, hw_commands_[i]);
+  // }
 
   ang_command.Position.Actuators.Actuator1 = rosVelocityToKinova(hw_commands_[0]);
   ang_command.Position.Actuators.Actuator2 = rosVelocityToKinova(hw_commands_[1]);
@@ -393,10 +418,10 @@ hardware_interface::return_type KinovaSystemHardware::write(
   ang_command.Position.Fingers.Finger2 = 0;
   ang_command.Position.Fingers.Finger3 = 0;
 
-  MySendBasicTrajectory(ang_command);
+  MySendAdvanceTrajectory(ang_command);
 
-  int result = MySendBasicTrajectory(ang_command);
-  RCLCPP_INFO(LOGGER, "MySendBasicTrajectory result: %d", result);
+  // int result = MySendBasicTrajectory(ang_command);
+  // RCLCPP_INFO(LOGGER, "MySendBasicTrajectory result: %d", result);
 
   
   return hardware_interface::return_type::OK;
