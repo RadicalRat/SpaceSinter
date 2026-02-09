@@ -17,15 +17,14 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 
 # detect architecture-specific lib dir inside package repo
-if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-  set(_arch_dir "aarch64")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-  set(_arch_dir "x86_64")
-else()
-  set(_arch_dir "${CMAKE_SYSTEM_PROCESSOR}")
-endif()
+set(KINOVA_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/x86_64-linux-gnu")
 
-set(KINOVA_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/${_arch_dir}")
+file(GLOB KINOVA_SO_GLOB "${KINOVA_LIB_DIR}/*.so*")
+
+install(
+  FILES ${KINOVA_SO_GLOB}
+  DESTINATION lib
+)
 
 # collect absolute paths to vendor .so files (if present)
 set(KINOVA_SO_FILES "")
