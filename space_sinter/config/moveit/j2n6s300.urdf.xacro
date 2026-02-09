@@ -11,7 +11,7 @@
     <!-- Import real system control_xacro -->
     <xacro:include filename="$(find space_sinter)/config/moveit/j2n6s300.ros2_control.xacro"/>
 
-    <!-- <xacro:j2n6s300_ros2_control_fake name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/> -->
-     <xacro:j2n6s300_ros2_control name="RealSystem" initial_positions_file="$(arg initial_positions_file)"/>
+    <xacro:j2n6s300_ros2_control_fake name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+     <!-- <xacro:j2n6s300_ros2_control name="RealSystem" initial_positions_file="$(arg initial_positions_file)"/> -->
 
 </robot>
