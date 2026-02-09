@@ -107,14 +107,14 @@ ros2_control:
     path: "config/control/ros2_control.yaml"
   # Load and start these controllers so they can be used immediately.
   controllers_active_at_startup:
+    - "joint_trajectory_controller"
+    - "joint_state_broadcaster"
+  controllers_inactive_at_startup:
     - "force_torque_sensor_broadcaster"
     - "robotiq_gripper_controller"
-    - "joint_state_broadcaster"
-    - "servo_controller"
-  controllers_inactive_at_startup:
-    - "joint_trajectory_controller"
     - "joint_trajectory_admittance_controller"
     - "velocity_force_controller"
+    - "servo_controller"
 
 objectives:
   behavior_loader_plugins:
