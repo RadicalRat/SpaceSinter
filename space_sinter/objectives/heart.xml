@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Heart">
+  <!--//////////-->
+  <BehaviorTree ID="Heart" _description="Draw a Heart" _favorite="false">
+    <Control ID="Sequence" name="TopLevelSequence" />
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Heart">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>
