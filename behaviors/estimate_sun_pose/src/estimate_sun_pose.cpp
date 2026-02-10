@@ -2,8 +2,15 @@
 
 #include "spdlog/spdlog.h"
 
+
+// ROS pose and image message types
 #include <geometry_msgs/msg/pose.hpp>
 #include <sensor_msgs/msg/image.hpp>
+
+
+// ROS cv_bridge
+#include <cv_bridge/cv_bridge.hpp>
+
 
 
 // OpenCV includes

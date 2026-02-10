@@ -3,10 +3,12 @@ project(estimate_sun_pose CXX)
 
 find_package(moveit_pro_package REQUIRED)
 find_package(OpenCV REQUIRED)
+# find_package(cv_bridge REQUIRED)
 
 moveit_pro_package()
 
-set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_studio_behavior_interface pluginlib)
+
+set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_studio_behavior_interface pluginlib cv_bridge)
 foreach(package IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${package} REQUIRED)
 endforeach()
@@ -21,7 +23,8 @@ target_include_directories(
   estimate_sun_pose
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include>
-         ${OpenCV_INCLUDE_DIRS})
+         ${OpenCV_INCLUDE_DIRS}
+         ${cv_bridge_INCLUDE_DIRS})
 
 ament_target_dependencies(estimate_sun_pose
                           ${THIS_PACKAGE_INCLUDE_DEPENDS})
@@ -37,7 +40,8 @@ install(
   DESTINATION include)
 
 target_link_libraries(estimate_sun_pose
-  ${OpenCV_LIBS})
+  ${OpenCV_LIBS}
+  ${cv_bridge_LIBS})
 
 if(BUILD_TESTING)
   moveit_pro_behavior_test(estimate_sun_pose)
