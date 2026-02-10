@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<library path="estimate_sun_pose">
+  <class
+    type="estimate_sun_pose::EstimateSunPoseBehaviorsLoader"
+    base_class_type="moveit_studio::behaviors::SharedResourcesNodeLoaderBase"
+  />
+</library>

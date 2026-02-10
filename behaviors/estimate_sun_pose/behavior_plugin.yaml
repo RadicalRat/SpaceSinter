@@ -1,0 +1,4 @@
+objectives:
+  behavior_loader_plugins:
+    estimate_sun_pose:
+      - "estimate_sun_pose::EstimateSunPoseBehaviorsLoader"
