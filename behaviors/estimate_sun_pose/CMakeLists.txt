@@ -3,7 +3,7 @@ project(estimate_sun_pose CXX)
 
 find_package(moveit_pro_package REQUIRED)
 find_package(OpenCV REQUIRED)
-# find_package(cv_bridge REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 moveit_pro_package()
 
@@ -23,8 +23,11 @@ target_include_directories(
   estimate_sun_pose
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include>
-         ${OpenCV_INCLUDE_DIRS}
-         ${cv_bridge_INCLUDE_DIRS})
+         ${OpenCV_INCLUDE_DIRS})
+
+ament_target_dependencies(estimate_sun_pose
+  cv_bridge
+)
 
 ament_target_dependencies(estimate_sun_pose
                           ${THIS_PACKAGE_INCLUDE_DEPENDS})
