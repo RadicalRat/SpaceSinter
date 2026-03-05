@@ -13,11 +13,11 @@
 ## Purpose
 This code stack was developed for the **SolarSinter** senior design team at the Colorado School of Mines. The project goal was the development of a road-building system to concentrate solar energy and "sinter" (melt) lunar regolith into glassy roads for lunar infrastructure.
 
-This system utilizes a **Kinova Jaco Gen2 (6-DOF)** arm for the deployment and maneuvering of a large Fresnel lens. Custom software was developed to bridge this legacy hardware with **ROS 2 Jazzy** and **MoveIt Pro**, enabling precise path planning, obstacle avoidance, and behavior-tree-based autonomy.
+This system utilizes a **Kinova Jaco Gen2 (6-DOF)** arm for the deployment and maneuvering of a large Fresnel lens. Custom software was developed to bridge this legacy hardware with **ROS 2 Humble** and **MoveIt Pro**, enabling precise path planning, obstacle avoidance, and behavior-tree-based autonomy.
 
 ## Requirements
 * **OS:** Ubuntu 24.04 (Noble Numbat)
-* **Middleware:** ROS 2 Jazzy Jalisco
+* **Middleware:** ROS 2 Humble (MoveIt Pro Docker container handles this)
 * **Software:** MoveIt Pro (Release 2.0+)
 * **Hardware:** Kinova Jaco Gen2 6-DOF arm
 
