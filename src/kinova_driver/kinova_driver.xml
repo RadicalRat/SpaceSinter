@@ -1,0 +1,9 @@
+<library path="kinova_driver">
+  <class name="kinova_driver/KinovaSystemHardware"
+         type="kinova_driver::KinovaSystemHardware"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Space Sinter team's kinova gen2 hardware driver, to control the gen2 JACO arm from kinova. Uses velocity command interfaces and position,velocity, and effort state interfaces.
+    </description>
+  </class>
+</library>
