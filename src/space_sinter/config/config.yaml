@@ -112,12 +112,11 @@ ros2_control:
   controllers_active_at_startup:
     - "joint_trajectory_controller"
     - "joint_state_broadcaster"
-  controllers_inactive_at_startup:
-    - "force_torque_sensor_broadcaster"
-    - "robotiq_gripper_controller"
-    - "joint_trajectory_admittance_controller"
-    - "velocity_force_controller"
-    - "servo_controller"
+  controllers_inactive_at_startup: []
+    # - "force_torque_sensor_broadcaster"
+    # - "robotiq_gripper_controller"
+    # - "joint_trajectory_admittance_controller"
+    # - "velocity_force_controller"
 
 objectives:
   behavior_loader_plugins:
@@ -125,10 +124,11 @@ objectives:
     # Add additional plugin loaders as needed.
     core:
       - "moveit_pro::behaviors::CoreBehaviorsLoader"
+      - "moveit_pro::behaviors::MPCBehaviorsLoader"
       - "moveit_pro::behaviors::MTCCoreBehaviorsLoader"
-      - "moveit_pro::behaviors::ServoBehaviorsLoader"
       - "moveit_pro::behaviors::VisionBehaviorsLoader"
       - "moveit_pro::behaviors::ConverterBehaviorsLoader"
+      - "moveit_pro::behaviors::MujocoBehaviorsLoader"
   objective_library_paths:
     core_objectives:
       package_name: "moveit_pro_objectives"
