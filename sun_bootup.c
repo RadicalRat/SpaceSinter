@@ -1,13 +1,9 @@
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include "SpiceUsr.h"
 
-int main(int argc, char* argv[]) {
-    // Check if an argument was passed to avoid a segmentation fault
-    if (argc < 2) {
-        printf("Error: Please provide a UTC time string (e.g., \"2026-03-05 16:45:00 UTC\")\n");
-        return 1;
-    }
+int main() {
 
     // 1. Load the Meta-kernel
     furnsh_c("solar_kernels.tm");
@@ -30,9 +26,19 @@ int main(int argc, char* argv[]) {
     SpiceDouble lat_rad = lat_deg * rpd_c();
     georec_c(lon_rad, lat_rad, alt, re, f, obspos);
 
-    // 5. Convert UTC to ET
+    // Get the current time from the device    
+    time_t rawtime = time(NULL);
+    struct tm *utc = gmtime(&rawtime);
+    char timstr[32];
     SpiceDouble et;
-    str2et_c(argv[1], &et);
+
+    // Direct numerical print is faster than locale-based formatting
+    // Result: "2026-03-10T10:07:48"
+    sprintf(timstr, "%04d-%02d-%02dT%02d:%02d:%02d", 
+            utc->tm_year + 1900, utc->tm_mon + 1, utc->tm_mday, 
+            utc->tm_hour, utc->tm_min, utc->tm_sec);
+
+    str2et_c(timstr, &et);
 
     // 6. Calculate Azimuth and Elevation
     // Using IAU_EARTH as the observer frame center is EARTH
@@ -50,7 +56,7 @@ int main(int argc, char* argv[]) {
     if (az_deg < 0) az_deg += 360.0;
 
     printf("--- Solar Pointing (Golden, CO) ---\n");
-    printf("Time     : %s\n", argv[1]);
+    printf("Current System Time: %s", ctime(&(time_t){time(NULL)}));
     printf("Azimuth  : %10.4f° (0=True North, 90=East)\n", az_deg);
     printf("Elevation: %10.4f° (Positive is above horizon)\n", el_deg);
 

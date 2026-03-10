@@ -3,3 +3,17 @@ install/
 log/
 .vscode/
 
+
+# Solar Tracking Project additions
+sun_pos
+sun_bootup
+*.a
+*.o
+*.tm
+
+# SPICE Binary Kernels (Large files)
+*.bsp
+*.bc
+*.tpc
+*.be
+*.nsc
