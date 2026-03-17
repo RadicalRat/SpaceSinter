@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+  <!-- Define default values for potential ROS 2 launch substitutions -->
+  <arg
+    name="hardware_interface"
+    default="mock"
+    description="Which hardware interface implementation to use, if any: '', 'mock'"
+  />
+
+  <!--
+    Define variables using the 'let' tag for clarity and reuse.
+    This is similar to defining variables in your Python launch file.
+  -->
+
+  <!-- Get URDF via xacro -->
+  <!-- Access ROS 2 launch substitution via 'var' -->
+  <let
+    name="robot_description_content"
+    value="$(command 'xacro $(find-pkg-share example_arm_hardware_interface)/urdf/r6bot.urdf.xacro hardware_interface:=$(var hardware_interface)')"
+  />
+
+  <!-- Path to controller configurations -->
+  <let
+    name="robot_controllers"
+    value="$(find-pkg-share example_arm_hardware_interface)/config/ros2_controllers.yaml"
+  />
+
+  <!-- Path to RViz configuration -->
+  <let
+    name="rviz_config_file"
+    value="$(find-pkg-share example_arm_description)/launch/view_robot.rviz"
+  />
+
+  <!--
+    Define the nodes to be launched.
+    This is equivalent to the `Node` action in Python.
+  -->
+
+  <!-- Controller Manager Node -->
+  <node
+    pkg="controller_manager"
+    exec="ros2_control_node"
+    output="both"
+    emulate_tty="true"
+  >
+    <param name="robot_description" value="$(var robot_description_content)" />
+    <param from="$(var robot_controllers)" />
+  </node>
+
+  <!-- Robot State Publisher Node -->
+  <node
+    pkg="robot_state_publisher"
+    exec="robot_state_publisher"
+    output="both"
+    emulate_tty="true"
+  >
+    <param name="robot_description" value="$(var robot_description_content)" />
+  </node>
+
+  <!--
+    Robot Controller Spawner
+    This spawner is launched immediately. The spawner executable has its own
+    internal logic to wait for the controller_manager to be available.
+  -->
+  <node
+    name="robot_controller_spawner"
+    pkg="controller_manager"
+    exec="spawner"
+    output="both"
+    emulate_tty="true"
+    args="joint_trajectory_controller --param-file $(var robot_controllers)"
+  />
+
+  <!--
+    Joint State Broadcaster Spawner
+    This spawner is launched after a 1.5-second delay. This <timer> tag is a
+    workaround to approximate the sequential execution from the Python launch file's
+    OnProcessExit handler. It helps ensure the main controller is spawned first.
+  -->
+  <timer period="1.5">
+    <node
+      name="joint_state_broadcaster_spawner"
+      pkg="controller_manager"
+      exec="spawner"
+      output="both"
+      emulate_tty="true"
+      args="joint_state_broadcaster"
+    />
+  </timer>
+
+  <!--
+    RViz2 Node
+    RViz is launched after a 3.0-second delay to give time for the robot state
+    to be published. It is also conditional on the 'gui' argument.
+  -->
+  <timer period="3.0">
+    <node
+      pkg="rviz2"
+      exec="rviz2"
+      output="both"
+      emulate_tty="true"
+      args="-d $(var rviz_config_file)"
+    />
+  </timer>
+</launch>
