@@ -274,18 +274,18 @@
 
     <link name="${prefix}_lens">
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 -0.01002 0.00827" rpy="0 0 0"/>
         <geometry>
-          <box size="0.6 0.6 0.03"/>
+          <box size="0.500 0.532 0.025"/>
         </geometry>
         <material name="lens_glass">
           <color rgba="0.3 0.3 0.8 0.5"/>
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 -0.27602 -0.00827" rpy="0 0 0"/>
         <geometry>
-          <box size="0.6 0.6 0.03"/>
+          <box size="0.500 0.532 0.025"/>
         </geometry>
       </collision>
       <inertial>
@@ -300,7 +300,7 @@
     <joint name="${prefix}_lens_joint" type="fixed">
       <parent link="${prefix}_link_6"/>
       <child link="${prefix}_lens"/>
-      <origin xyz="0 0 -0.3" rpy="${-PI/2} 0 ${-PI/2}"/>
+      <origin xyz="-0.00827 0 -0.27602" rpy="${-PI/2} 0 ${-PI/2}"/>
     </joint>
 
     <!-- ========================================== -->
@@ -315,6 +315,21 @@
       <child link="${prefix}_focal_point"/>
       <origin xyz="0 0 0.4" rpy="0 0 0"/>
     </joint>
+
+    <!-- ========================================== -->
+    <!--   Camera Frame (reference middle of lens)  -->
+    <!--   Virtual frame — no geometry/inertia      -->
+    <!-- ========================================== -->
+
+    <link name="${prefix}_suncam_optical"/>
+
+    <joint name="${prefix}_suncam_joint" type="fixed">
+      <parent link="${prefix}_lens"/>
+      <child link="${prefix}_suncam_optical"/>
+      <origin xyz="-0.09436 -0.203 -0.03567" rpy="${PI} 0 0"/>
+    </joint>
+
+
 
   </xacro:macro>
 
