@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(example_arm_description)
+project(sinter_arm_description)
 
 find_package(ament_cmake REQUIRED)
 

@@ -9,7 +9,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
 
     # --- Paths ---
-    description_pkg = get_package_share_directory("example_arm_description")
+    description_pkg = get_package_share_directory("sinter_arm_description")
     urdf_path = PathJoinSubstitution([description_pkg, "urdf", "j2n6s300.urdf.xacro"])
     rviz_config = PathJoinSubstitution([description_pkg, "launch", "view_robot.rviz"])
 

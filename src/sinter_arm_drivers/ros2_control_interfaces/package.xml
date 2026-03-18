@@ -1,13 +1,12 @@
 <?xml version="1.0" ?>
 <package format="3">
-  <name>example_arm_hardware_interface</name>
+  <name>ros2_control_interfaces</name>
   <version>0.1.0</version>
   <description>
-    Example ROS 2 package demonstrating use of ros2_control mock hardware and
-    ros2_control Xacro files for simulating a robot arm.
+    Ros2 package containing all of the ros2 control urdf and control interfaces for sinter packages
   </description>
 
-  <maintainer email="nathanbrooks@picknik.ai">Nathan Brooks</maintainer>
+  <maintainer email="cameronhinkle@mines.edu">Cameron Hinkle</maintainer>
 
   <license>BSD-3-Clause</license>
 
@@ -15,7 +14,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <!-- Runtime dependencies -->
-  <exec_depend>example_arm_description</exec_depend>
+  <exec_depend>sinter_arm_description</exec_depend>
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>controller_manager_msgs</exec_depend>

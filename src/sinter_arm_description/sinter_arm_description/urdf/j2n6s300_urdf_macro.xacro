@@ -22,7 +22,7 @@
     <link name="${prefix}_link_base">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/base.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/base.dae"/>
         </geometry>
         <material name="carbon_fiber">
           <color rgba="0.792 0.820 0.933 1"/>
@@ -30,7 +30,7 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/base.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/base.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -55,18 +55,18 @@
     <link name="${prefix}_link_1">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/shoulder.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/shoulder.dae"/>
         </geometry>
         <material name="carbon_fiber"/>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/ring_big.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/ring_big.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/shoulder.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/shoulder.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -94,18 +94,18 @@
     <link name="${prefix}_link_2">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/arm.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/arm.dae"/>
         </geometry>
         <material name="carbon_fiber"/>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/ring_big.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/ring_big.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/arm.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/arm.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -133,18 +133,18 @@
     <link name="${prefix}_link_3">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/forearm.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/forearm.dae"/>
         </geometry>
         <material name="carbon_fiber"/>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/ring_big.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/ring_big.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/forearm.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/forearm.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -172,18 +172,18 @@
     <link name="${prefix}_link_4">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/wrist.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/wrist.dae"/>
         </geometry>
         <material name="carbon_fiber"/>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/ring_small.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/ring_small.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/wrist.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/wrist.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -211,18 +211,18 @@
     <link name="${prefix}_link_5">
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/wrist.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/wrist.dae"/>
         </geometry>
         <material name="carbon_fiber"/>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/visual/ring_small.dae"/>
+          <mesh filename="package://sinter_arm_description/meshes/visual/ring_small.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://example_arm_description/meshes/collision/wrist.STL"/>
+          <mesh filename="package://sinter_arm_description/meshes/collision/wrist.STL"/>
         </geometry>
       </collision>
       <inertial>
@@ -300,7 +300,20 @@
     <joint name="${prefix}_lens_joint" type="fixed">
       <parent link="${prefix}_link_6"/>
       <child link="${prefix}_lens"/>
-      <origin xyz="0 0 -0.3" rpy="0 ${PI/2} 0"/>
+      <origin xyz="0 0 -0.3" rpy="${-PI/2} 0 ${-PI/2}"/>
+    </joint>
+
+    <!-- ========================================== -->
+    <!--   Focal Point (400mm along lens Z-axis)    -->
+    <!--   Virtual frame — no geometry/inertia      -->
+    <!-- ========================================== -->
+
+    <link name="${prefix}_focal_point"/>
+
+    <joint name="${prefix}_focal_point_joint" type="fixed">
+      <parent link="${prefix}_lens"/>
+      <child link="${prefix}_focal_point"/>
+      <origin xyz="0 0 0.4" rpy="0 0 0"/>
     </joint>
 
   </xacro:macro>

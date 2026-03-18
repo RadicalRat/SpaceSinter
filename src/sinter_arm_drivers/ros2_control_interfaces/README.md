@@ -1,5 +1,3 @@
-TODO move into separate repo
-
 ```
 ros2 topic pub /joint_trajectory_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "header:
   stamp:

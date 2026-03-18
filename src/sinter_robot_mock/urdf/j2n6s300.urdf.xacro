@@ -18,4 +18,10 @@
 
   <xacro:j2n6s300_description base_parent="world"/>
 
+   <!-- Mock arm hardware -->
+  <xacro:if value="${'$(arg hardware_interface)' == 'mock'}">
+    <xacro:include filename="$(find ros2_control_interfaces)/urdf/j2n6s300_mock_ros2_control_macro.xacro"/>
+    <xacro:j2n6s300_control/>
+  </xacro:if>
+
 </robot>

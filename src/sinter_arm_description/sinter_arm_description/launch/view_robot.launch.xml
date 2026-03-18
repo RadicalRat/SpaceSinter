@@ -4,7 +4,7 @@
   <node pkg="robot_state_publisher" exec="robot_state_publisher">
     <param
       name="robot_description"
-      value="$(command 'xacro $(find-pkg-share example_arm_description)/urdf/r6bot.urdf.xacro')"
+      value="$(command 'xacro $(find-pkg-share sinter_arm_description)/urdf/j2n600s.urdf.xacro')"
     />
   </node>
 
@@ -16,7 +16,7 @@
     name="rviz2"
     pkg="rviz2"
     exec="rviz2"
-    args="-d $(find-pkg-share example_arm_description)/launch/view_robot.rviz"
+    args="-d $(find-pkg-share sinter_arm_description)/launch/view_robot.rviz"
     output="screen"
   />
 </launch>

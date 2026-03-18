@@ -1,14 +1,14 @@
 <?xml version="1.0" ?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>example_arm_description</name>
+  <name>sinter_arm_description</name>
   <version>0.1.0</version>
   <description>
     Package with example URDF, Xacro, and visualization launch files for the
-    ros2_control r6bot.
+    ros2_control kinova robot.
   </description>
 
-  <maintainer email="nathanbrooks@picknik.ai">Nathan Brooks</maintainer>
+  <maintainer email="cameronhinkle@mines.edu">Cameron Hinkle</maintainer>
 
   <license>BSD-3-Clause</license>
 

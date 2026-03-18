@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(example_arm_hardware_interface)
+project(ros2_control_interfaces)
 
 # Default settings
 if(NOT CMAKE_CXX_STANDARD)
@@ -11,7 +11,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(controller_manager_msgs REQUIRED)
-find_package(example_arm_description REQUIRED)
+find_package(sinter_arm_description REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(ros2_control REQUIRED)
@@ -45,11 +45,6 @@ find_package(xacro REQUIRED)
 # Installation
 # ------------------------------------------------------
 
-# Install launch files
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}/
-)
 
 # Install URDF/Xacro files
 install(
