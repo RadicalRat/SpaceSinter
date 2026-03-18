@@ -40,9 +40,8 @@
         <state_interface name="effort"/>
       </joint>
 
-    <!-- replace with some plugin for real hardware -->
       <hardware>
-        <plugin>mock_components/GenericSystem</plugin>
+        <plugin>kinova_driver/KinovaSystemHardware</plugin>
         <param name="state_following_offset">0.0</param>
         <param name="calculate_dynamics">true</param>
       </hardware>
