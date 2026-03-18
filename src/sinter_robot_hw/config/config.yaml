@@ -4,3 +4,4 @@ objectives:
     example_objective:
       package_name: "sinter_robot_hw"
       relative_path: "objectives"
+

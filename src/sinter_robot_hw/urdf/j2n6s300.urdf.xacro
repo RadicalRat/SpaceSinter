@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!--
+  Top-level Kinova Jaco2 j2n6s300 URDF (with lens, no gripper).
+
+  Xacro hierarchy:
+    - package://sinter_arm_description/urdf/j2n6s300.urdf.xacro          (this file)
+      - package://sinter_arm_description/urdf/j2n6s300_urdf_macro.xacro  (arm + lens macro)
+
+  Usage:
+    xacro j2n6s300.urdf.xacro
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="j2n6s300">
+
+  <!-- Arm description macro (6 DOF + lens payload) -->
+  <xacro:include filename="$(find sinter_arm_description)/urdf/j2n6s300_urdf_macro.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:j2n6s300_description base_parent="world"/>
+
+   <!-- Mock arm hardware -->
+  <xacro:if value="${'$(arg hardware_interface)' == 'physical'}">
+    <xacro:include filename="$(find ros2_control_interfaces)/urdf/j2n6s300_physical_ros2_control_macro.xacro"/>
+    <xacro:j2n6s300_control/>
+  </xacro:if>
+
+</robot>
