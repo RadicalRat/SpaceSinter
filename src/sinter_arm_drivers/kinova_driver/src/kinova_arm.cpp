@@ -160,6 +160,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(const hardware_
   hw_velocities_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_efforts_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_commands_.resize(info_.joints.size(), 0.0);
+  hw_commands_positions_.resize(info_.joints.size(), 0.0);
 
 
 
@@ -206,6 +207,8 @@ std::vector<hardware_interface::CommandInterface> KinovaSystemHardware::export_c
   
 
     for (uint8_t i = 0; i < info_.joints.size(); i++) {
+    command_interfaces.emplace_back(hardware_interface::CommandInterface(
+        info_.joints[i].name, hardware_interface::HW_IF_POSITION, &hw_commands_positions_[i]));
     command_interfaces.emplace_back(hardware_interface::CommandInterface(
         info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &hw_commands_[i]));
   }

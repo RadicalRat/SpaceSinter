@@ -77,7 +77,8 @@ private:
     std::vector<double> hw_positions_;
     std::vector<double> hw_velocities_;
     std::vector<double> hw_efforts_;
-    std::vector<double> hw_commands_; //Velocity commands
+    std::vector<double> hw_commands_;          // Velocity commands
+    std::vector<double> hw_commands_positions_; // Position commands (claimed by controller manager but not sent to hardware)
 
     //A handle to the API.
     void * commandLayer_handle;
