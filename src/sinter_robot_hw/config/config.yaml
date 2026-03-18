@@ -5,3 +5,18 @@ objectives:
       package_name: "sinter_robot_hw"
       relative_path: "objectives"
 
+hardware:
+  simulated: false
+  robot_driver_persist_launch_file:
+    package: "sinter_robot_hw"
+    path: "launch/additional_driver_nodes.launch.py"
+  robot_description:
+    urdf:
+      package: "sinter_robot_hw"
+      path: "urdf/j2n6s300.urdf.xacro"
+    urdf_params:
+        # Use "mock", "mujoco", or "physical"
+      - hardware_interface: "physical"
+
+
+

@@ -3,4 +3,7 @@
   <include
     file="$(find-pkg-share moveit_studio_agent)/launch/studio_agent_bridge.launch.xml"
   />
+  <include 
+    file="$(find-pkg-share sun_camera_driver)/launch/trackingcam_driver.launch.py"
+  />
 </launch>
