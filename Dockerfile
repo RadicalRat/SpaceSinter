@@ -55,7 +55,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 # Add user to dialout group to enable communication with serial USB devices (gripper, FTS, ...)
 # Add user to video group to enable communication with cameras
-RUN usermod -aG dialout,video ${USERNAME}
+# Add user to plugdev group to enable communication with raw USB devices (Kinova arm via libusb)
+RUN usermod -aG dialout,video,plugdev ${USERNAME}
 
 # Add user to the realtime group to enable RT limits
 RUN groupadd realtime && \

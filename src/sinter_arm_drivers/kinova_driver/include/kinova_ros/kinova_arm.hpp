@@ -1,4 +1,4 @@
-// Copyright 2021 ros2_control Development Team
+// Copyright 2024 Space Sinter Team, Colorado School of Mines
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * kinova_arm.hpp
+ *
+ * ros2_control hardware plugin for the Kinova Gen2 j2n6s300 6-DOF arm.
+ *
+ * State interfaces   : position (rad), velocity (rad/s), effort (N·m, gravity-free)
+ * Command interfaces : velocity (rad/s)
+ *
+ * Supports: joint_trajectory_admittance_controller, joint_velocity_controller
+ * Target control rate: 200 Hz
+ *
+ * Threading:
+ *   A SCHED_OTHER background thread (poller_loop) performs all Kinova USB I/O.
+ *   read() copies shadow state under a mutex — no USB calls on the RT thread.
+ *   write() calls SendBasicTrajectory, which enqueues to the arm's internal FIFO
+ *   and returns in microseconds — safe for the 200 Hz SCHED_FIFO RT thread.
+ */
+
 #ifndef KINOVA_SYSTEM_HPP_
 #define KINOVA_SYSTEM_HPP_
 
-#include <memory>
+#include <atomic>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 #include <cmath>
 
@@ -24,47 +44,50 @@
 #include "hardware_interface/hardware_info.hpp"
 #include "hardware_interface/system_interface.hpp"
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
-#include "rclcpp/clock.hpp"
 #include "rclcpp/duration.hpp"
 #include "rclcpp/macros.hpp"
 #include "rclcpp/time.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
 
-
-// kinova includes
 #include "kinova_api/KinovaTypes.h"
-
-// MAY NEED TO FIX FOR ARM SYSTEMS: check for rpi3 library build on github
 #include "kinova_api/Kinova.API.USBCommLayerUbuntu.h"
 #include "kinova_api/Kinova.API.USBCommandLayerUbuntu.h"
 
 
 namespace kinova_driver
 {
+
 class KinovaSystemHardware : public hardware_interface::SystemInterface
 {
 public:
   RCLCPP_SHARED_PTR_DEFINITIONS(KinovaSystemHardware)
 
-    hardware_interface::CallbackReturn on_init(
-        const hardware_interface::HardwareInfo & info) override;
+  hardware_interface::CallbackReturn on_init(
+    const hardware_interface::HardwareInfo & info) override;
 
-    hardware_interface::CallbackReturn on_configure(
-        const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_configure(
+    const rclcpp_lifecycle::State & previous_state) override;
 
-    hardware_interface::CallbackReturn on_activate(
-        const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_activate(
+    const rclcpp_lifecycle::State & previous_state) override;
 
-    hardware_interface::CallbackReturn on_deactivate(
-        const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_deactivate(
+    const rclcpp_lifecycle::State & previous_state) override;
 
-    hardware_interface::CallbackReturn on_cleanup(
-        const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_cleanup(
+    const rclcpp_lifecycle::State & previous_state) override;
 
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
-
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
+
+  hardware_interface::return_type prepare_command_mode_switch(
+    const std::vector<std::string> & start_interfaces,
+    const std::vector<std::string> & stop_interfaces) override;
+
+  hardware_interface::return_type perform_command_mode_switch(
+    const std::vector<std::string> & start_interfaces,
+    const std::vector<std::string> & stop_interfaces) override;
 
   hardware_interface::return_type read(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
@@ -73,59 +96,61 @@ public:
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
-  // TODO: add parameters for hardware interface
-    std::vector<double> hw_positions_;
-    std::vector<double> hw_velocities_;
-    std::vector<double> hw_efforts_;
-    std::vector<double> hw_commands_;          // Velocity commands
-    std::vector<double> hw_commands_positions_; // Position commands (claimed by controller manager but not sent to hardware)
+  // ── State buffers (exposed as state interfaces, written by read()) ─────────
+  std::vector<double> hw_positions_;   // rad
+  std::vector<double> hw_velocities_;  // rad/s
+  std::vector<double> hw_efforts_;     // N·m  (gravity-free torque)
 
-    //A handle to the API.
-    void * commandLayer_handle;
+  // ── Command buffers (exposed as command interfaces, written by controllers) ─
+  std::vector<double> hw_commands_;    // rad/s  (velocity)
 
-    //Function pointers to the functions we need
-    int(*MyInitAPI)();
-    int(*MyCloseAPI)();
-    int(*MySendBasicTrajectory)(TrajectoryPoint command);
-    int(*MyGetDevices)(KinovaDevice devices[MAX_KINOVA_DEVICE], int &result);
-    int(*MySetActiveDevice)(KinovaDevice device);
-    int(*MyGetAngularPosition)(AngularPosition &);
-    int (*MyGetAngularVelocity)(AngularPosition &Response);
-    int(*MyGetAngularForce)(AngularPosition &Response);
-    int (*MyStartControlAPI)(){nullptr};
-    int (*MyStopControlAPI)(){nullptr};
-    int (*MySetAngularControl)(){nullptr};
-    int (*MySendAdvanceTrajectory)(TrajectoryPoint){nullptr};
+  // ── Kinova SDK library handles ─────────────────────────────────────────────
+  void * commLayer_handle_{nullptr};
+  void * commandLayer_handle_{nullptr};
 
+  // ── Kinova API function pointers ───────────────────────────────────────────
+  // Mirrors the function-pointer pattern used in the official example scripts
+  // (kinova_ang_control.cpp, kinova_get_ang.cpp, kinova_force_control.cpp).
+  int (*MyInitAPI)()                                               {nullptr};
+  int (*MyCloseAPI)()                                              {nullptr};
+  int (*MyGetDevices)(KinovaDevice[], int &)                       {nullptr};
+  int (*MySetActiveDevice)(KinovaDevice)                           {nullptr};
+  int (*MyMoveHome)()                                              {nullptr};
+  int (*MyInitFingers)()                                           {nullptr};
+  int (*MySendBasicTrajectory)(TrajectoryPoint)                    {nullptr};
+  int (*MyGetAngularPosition)(AngularPosition &)                   {nullptr};
+  int (*MyGetAngularVelocity)(AngularPosition &)                   {nullptr};
+  int (*MyGetAngularCommand)(AngularPosition &)                    {nullptr};
+  int (*MyGetAngularForce)(AngularPosition &)                      {nullptr};
+  int (*MyGetAngularForceGravityFree)(AngularPosition &)           {nullptr};
+  int (*MyStartControlAPI)()                                       {nullptr};
+  int (*MyStopControlAPI)()                                        {nullptr};
+  int (*MySetAngularControl)()                                     {nullptr};
+  int (*MyRefresDevicesList)()                                     {nullptr};
 
-    static constexpr double TO_RAD = M_PI / 180.0;
-    static constexpr double TO_DEG = 180.0 / M_PI;
+  // ── Controller-mode guard ──────────────────────────────────────────────────
+  // write() only sends USB commands after a velocity controller has claimed the
+  // command interfaces via perform_command_mode_switch().  This prevents the RT
+  // thread from filling the arm's trajectory FIFO during the JSB-only startup
+  // phase when no motion is intended.
+  bool velocity_commands_active_{false};
 
-    // Standard conversion for POSITIONS
-    double degreesToRadians(double degrees) const {
-        return degrees * TO_RAD;
-    }
+  // ── Background USB polling thread ─────────────────────────────────────────
+  // All Kinova GetAngular* calls live here (SCHED_OTHER), keeping the vendor
+  // libUSB userspace polling loop off the SCHED_FIFO RT control thread.
+  std::thread       poller_thread_;
+  std::mutex        state_mutex_;
+  std::atomic<bool> poller_running_{false};
+  AngularPosition   pos_shadow_{};
+  AngularPosition   vel_shadow_{};
+  AngularPosition   torq_shadow_{};
+  void poller_loop();
 
-    double radiansToDegrees(double radians) const {
-        return radians * TO_DEG;
-    }
-
-    // Special conversion for VELOCITIES
-    double kinovaVelocityToRos(double kinova_deg_per_sec) const {
-    // // Kinova Gen2 API often reports negative velocity as (360 - val)
-    // // e.g. -10 deg/s might come in as 350.
-    //     if (kinova_deg_per_sec > 180.0) {
-    //         kinova_deg_per_sec -= 360.0;
-    //     }
-        return kinova_deg_per_sec * TO_RAD;
-    }
-
-    // converts to degrees
-    double rosVelocityToKinova(double ros_rad_per_sec) const {
-        return ros_rad_per_sec * TO_DEG;
-    }
+  // ── Unit-conversion constants ──────────────────────────────────────────────
+  static constexpr double DEG_TO_RAD = M_PI / 180.0;
+  static constexpr double RAD_TO_DEG = 180.0 / M_PI;
 };
 
 }  // namespace kinova_driver
 
-#endif 
+#endif  // KINOVA_SYSTEM_HPP_

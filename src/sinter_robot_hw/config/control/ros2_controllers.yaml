@@ -1,6 +1,10 @@
 controller_manager:
   ros__parameters:
-    update_rate: 50 # Hz
+    # 200 Hz matches the Kinova SDK's recommended 5 ms command interval
+    # (kinova_ang_control.cpp: usleep(5000) between SendBasicTrajectory calls).
+    # write() enqueues to the arm's internal FIFO and returns in microseconds,
+    # so 200 Hz is safe on the SCHED_FIFO RT thread.
+    update_rate: 200 # Hz
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
     joint_trajectory_admittance_controller:
@@ -116,5 +120,3 @@ joint_velocity_controller:
     joint_limit_position_tolerance: 0.02
     # Timeout in seconds after which the controller will stop motion if no new commands are received.
     command_timeout: 0.2
-    # Rate in Hz at which the controller will publish the state.
-    state_publish_rate: 20
