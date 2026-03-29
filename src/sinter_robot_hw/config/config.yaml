@@ -26,13 +26,15 @@ ros2_control:
     package: "sinter_robot_hw"
     path: "config/control/ros2_controllers.yaml"
 
-  # Physical hardware only exposes velocity command interfaces; JTAC requires
-  # position command interfaces to activate, so keep it inactive at startup to
-  # avoid it being batched with joint_state_broadcaster in switch_controller.
+  # Physical hardware only exposes velocity command interfaces.
+  # joint_trajectory_admittance_controller requires position command interfaces
+  # and is kept inactive.  velocity_force_controller is the target for poseIK /
+  # pose_jog (see pose_jog.yaml).  joint_velocity_controller handles joint-space
+  # velocity objectives and servo.
   controllers_active_at_startup:
     - "joint_state_broadcaster"
-  controllers_inactive_at_startup:
     - "joint_trajectory_admittance_controller"
+  controllers_inactive_at_startup:
     - "velocity_force_controller"
     - "joint_velocity_controller"
 

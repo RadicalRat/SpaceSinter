@@ -1,8 +1,6 @@
 <?xml version="1.0" ?>
 <robot name="j2n6s300">
-    <disable_collisions link1="j2n6s300_lens" link2="j2n6s300_link_4" reason="Never" />
-    <disable_collisions link1="j2n6s300_lens" link2="j2n6s300_link_5" reason="Never" />
-    <disable_collisions link1="j2n6s300_lens" link2="j2n6s300_link_6" reason="Adjacent" />
+    <!-- Arm self-collision pairs (from kinova reference SRDF) -->
     <disable_collisions link1="j2n6s300_link_1" link2="j2n6s300_link_2" reason="Adjacent" />
     <disable_collisions link1="j2n6s300_link_1" link2="j2n6s300_link_3" reason="Never" />
     <disable_collisions link1="j2n6s300_link_1" link2="j2n6s300_link_4" reason="Never" />
@@ -12,8 +10,15 @@
     <disable_collisions link1="j2n6s300_link_2" link2="j2n6s300_link_base" reason="Never" />
     <disable_collisions link1="j2n6s300_link_3" link2="j2n6s300_link_4" reason="Adjacent" />
     <disable_collisions link1="j2n6s300_link_3" link2="j2n6s300_link_5" reason="Never" />
+    <disable_collisions link1="j2n6s300_link_3" link2="j2n6s300_link_6" reason="Never" />
     <disable_collisions link1="j2n6s300_link_3" link2="j2n6s300_link_base" reason="Never" />
     <disable_collisions link1="j2n6s300_link_4" link2="j2n6s300_link_5" reason="Adjacent" />
+    <disable_collisions link1="j2n6s300_link_4" link2="j2n6s300_link_6" reason="Never" />
+    <disable_collisions link1="j2n6s300_link_5" link2="j2n6s300_link_6" reason="Adjacent" />
+
+    <!-- Lens payload: only disable physically impossible-to-avoid adjacent links -->
+    <disable_collisions link1="j2n6s300_lens" link2="j2n6s300_link_5" reason="Adjacent" />
+    <disable_collisions link1="j2n6s300_lens" link2="j2n6s300_link_6" reason="Adjacent" />
 
     <group name="manipulator">
         <chain base_link="j2n6s300_link_base" tip_link="j2n6s300_focal_point"/>

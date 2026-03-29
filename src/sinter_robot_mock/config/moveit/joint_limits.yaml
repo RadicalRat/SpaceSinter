@@ -8,6 +8,7 @@ default_acceleration_scaling_factor: 1
 # Joint limits can be turned off with [has_velocity_limits, has_acceleration_limits]
 joint_limits:
   j2n6s300_joint_1:
+    has_position_limits: false
     has_velocity_limits: true
     max_velocity: 0.35
     has_acceleration_limits: true
@@ -23,16 +24,19 @@ joint_limits:
     has_acceleration_limits: true
     max_acceleration: 0.5
   j2n6s300_joint_4:
+    has_position_limits: false
     has_velocity_limits: true
     max_velocity: 0.35
     has_acceleration_limits: true
     max_acceleration: 0.5
   j2n6s300_joint_5:
+    has_position_limits: false
     has_velocity_limits: true
     max_velocity: 0.35
     has_acceleration_limits: true
     max_acceleration: 0.5
   j2n6s300_joint_6:
+    has_position_limits: false
     has_velocity_limits: true
     max_velocity: 0.35
     has_acceleration_limits: true

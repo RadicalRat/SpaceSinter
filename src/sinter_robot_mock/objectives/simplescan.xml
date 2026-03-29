@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="SimpleScan">
+  <BehaviorTree
+    ID="SimpleScan"
+    _description="A simple scanning objective to demonstrate scanning capabilities"
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action
+        ID="CreateStampedPose"
+        stamped_pose="{world_pose}"
+        reference_frame="world"
+        position_xyz="0.2;0.2;0;"
+      />
+      <SubTree ID="TransformPoseRotation" _collapsed="false" />
+      <Action ID="VisualizePose" pose="{output_pose}" />
+      <SubTree
+        ID="Move to Pose"
+        _collapsed="false"
+        controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        ik_frame="j2n6s300_focal_point"
+        link_padding="0.001"
+        planning_group_name="manipulator"
+        require_user_approval="false"
+        target_pose="{output_pose}"
+      />
+      <Action
+        ID="GenerateCoveragePath"
+        vector_of_poses="{pose_stamped_vector}"
+        bottom_right_corner="{output_pose}"
+        height="0.1"
+        stride_distance="0.05"
+        width="0.3"
+      />
+      <Action
+        ID="VisualizePath"
+        marker_lifetime="0.000000"
+        marker_name="path"
+        path="{pose_stamped_vector}"
+        pose_marker_size="0.100000"
+        show_poses="false"
+      />
+      <Action
+        ID="PlanCartesianPath"
+        acceleration_scale_factor="1.000000"
+        blending_radius="1e-10"
+        ik_cartesian_space_density="0.010000"
+        ik_joint_space_density="0.1"
+        joint_trajectory_msg="{joint_trajectory_msg}"
+        path="{pose_stamped_vector}"
+        planning_group_name="manipulator"
+        trajectory_sampling_rate="100"
+        velocity_scale_factor="0.05"
+        tip_links="j2n6s300_focal_point"
+        position_only="0"
+        max_optimizer_iterations="1"
+      />
+      <Action
+        ID="ExecuteTrajectory"
+        execution_pipeline="jtac"
+        controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        joint_trajectory_msg="{joint_trajectory_msg}"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="SimpleScan">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

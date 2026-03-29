@@ -18,16 +18,18 @@
  * ros2_control hardware plugin for the Kinova Gen2 j2n6s300 6-DOF arm.
  *
  * State interfaces   : position (rad), velocity (rad/s), effort (N·m, gravity-free)
- * Command interfaces : velocity (rad/s)
+ * Command interfaces : position (rad) and velocity (rad/s)
  *
- * Supports: joint_trajectory_admittance_controller, joint_velocity_controller
+ * Supports: joint_trajectory_admittance_controller (position mode),
+ *           joint_velocity_controller (velocity mode)
  * Target control rate: 200 Hz
  *
  * Threading:
  *   A SCHED_OTHER background thread (poller_loop) performs all Kinova USB I/O.
  *   read() copies shadow state under a mutex — no USB calls on the RT thread.
- *   write() calls SendBasicTrajectory, which enqueues to the arm's internal FIFO
- *   and returns in microseconds — safe for the 200 Hz SCHED_FIFO RT thread.
+ *   write() velocity path: SendBasicTrajectory(ANGULAR_VELOCITY) — matches the
+ *   official SDK example kinova_ang_control.cpp (usleep(5000) between calls).
+ *   write() position path: EraseAllTrajectories + SendAdvanceTrajectory(ANGULAR_POSITION).
  */
 
 #ifndef KINOVA_SYSTEM_HPP_
@@ -102,7 +104,8 @@ private:
   std::vector<double> hw_efforts_;     // N·m  (gravity-free torque)
 
   // ── Command buffers (exposed as command interfaces, written by controllers) ─
-  std::vector<double> hw_commands_;    // rad/s  (velocity)
+  std::vector<double> hw_commands_;           // rad/s  (velocity)
+  std::vector<double> hw_position_commands_;  // rad    (position)
 
   // ── Kinova SDK library handles ─────────────────────────────────────────────
   void * commLayer_handle_{nullptr};
@@ -118,6 +121,7 @@ private:
   int (*MyMoveHome)()                                              {nullptr};
   int (*MyInitFingers)()                                           {nullptr};
   int (*MySendBasicTrajectory)(TrajectoryPoint)                    {nullptr};
+  int (*MySendAdvanceTrajectory)(TrajectoryPoint)                 {nullptr};
   int (*MyGetAngularPosition)(AngularPosition &)                   {nullptr};
   int (*MyGetAngularVelocity)(AngularPosition &)                   {nullptr};
   int (*MyGetAngularCommand)(AngularPosition &)                    {nullptr};
@@ -126,14 +130,13 @@ private:
   int (*MyStartControlAPI)()                                       {nullptr};
   int (*MyStopControlAPI)()                                        {nullptr};
   int (*MySetAngularControl)()                                     {nullptr};
-  int (*MyRefresDevicesList)()                                     {nullptr};
-
+  int (*MyRefresDevicesList)()                                     {nullptr};  int (*MyEraseAllTrajectories)()                                    {nullptr};
   // ── Controller-mode guard ──────────────────────────────────────────────────
-  // write() only sends USB commands after a velocity controller has claimed the
-  // command interfaces via perform_command_mode_switch().  This prevents the RT
-  // thread from filling the arm's trajectory FIFO during the JSB-only startup
-  // phase when no motion is intended.
+  // write() only sends USB commands after a controller has claimed the command
+  // interfaces via perform_command_mode_switch().  This prevents the RT thread
+  // from filling the arm's trajectory FIFO during the JSB-only startup phase.
   bool velocity_commands_active_{false};
+  bool position_commands_active_{false};
 
   // ── Background USB polling thread ─────────────────────────────────────────
   // All Kinova GetAngular* calls live here (SCHED_OTHER), keeping the vendor

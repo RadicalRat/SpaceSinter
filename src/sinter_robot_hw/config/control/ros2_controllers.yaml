@@ -21,15 +21,21 @@ joint_trajectory_admittance_controller:
   ros__parameters:
     # Joint group to control.
     planning_group_name: manipulator
-    # Use velocity command interfaces to match hardware.
-    command_interface_type: velocity
+    # Use position command interfaces — hardware driver accepts position trajectory points.
+    
+    command_interfaces:
+      - velocity
+
+    state_interfaces:
+      - position
+      - velocity
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
     ee_frame: j2n6s300_focal_point
     # The frame where the force / torque sensor reading is given.
     # (Needs to exist in the kinematic chain).
     sensor_frame: j2n6s300_link_6
     # The name of the force torque sensor in the robot description which will be used in the admittance calculation.
-    # ft_sensor_name: tcp_fts_sensor
+    # ft_sensor_name: tcp_fts_spositionensor
     # Joint accelerations chosen to match MoveIt configs.
     stop_accelerations:
       - 30.0
@@ -38,6 +44,10 @@ joint_trajectory_admittance_controller:
       - 30.0
       - 30.0
       - 30.0
+    # Kinova SDK has inherent USB polling lag (~5ms), so tracking error is higher
+    # than a direct-drive robot. 0.1 rad gives headroom without masking real faults.
+    default_path_tolerance: 0.1
+    default_goal_tolerance: 0.05
 
 velocity_force_controller:
   ros__parameters:

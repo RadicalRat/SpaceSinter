@@ -17,8 +17,8 @@ joint_trajectory_admittance_controller:
   ros__parameters:
     # Joint group to control.
     planning_group_name: manipulator
-    # Use velocity command interfaces to match hardware.
-    command_interface_type: velocity
+    # Use position command interfaces — hardware driver accepts position trajectory points.
+    command_interface_type: position
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
     ee_frame: j2n6s300_focal_point
     # The frame where the force / torque sensor reading is given.

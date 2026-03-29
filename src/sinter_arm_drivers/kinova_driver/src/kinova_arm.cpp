@@ -21,8 +21,13 @@
  *
  * API usage follows the official Kinova SDK example scripts:
  *   kinova_ang_control.cpp   — ANGULAR_VELOCITY streaming via SendBasicTrajectory
- *   kinova_get_ang.cpp       — GetAngularPosition / GetAngularVelocity
+ *   kinova_get_ang.cpp       — GetAngularPosition / GetAngularVelocity (note: ×2 correction needed)
  *   kinova_force_control.cpp — GetAngularForceGravityFree
+ *
+ * Velocity readback correction:
+ *   GetAngularVelocity returns half the actual velocity (firmware quirk documented
+ *   in kinova_comm.cpp line 623: "velocities reported back by firmware seem to be
+ *   half of actual value").  All velocity reads are multiplied by 2.0.
  *
  * Threading model:
  *   A SCHED_OTHER background thread (poller_loop) runs all USB GetAngular* calls at
@@ -139,6 +144,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(
   LOAD_SYM(MyMoveHome,                 int(*)(),                       "MoveHome")
   LOAD_SYM(MyInitFingers,              int(*)(),                       "InitFingers")
   LOAD_SYM(MySendBasicTrajectory,      int(*)(TrajectoryPoint),        "SendBasicTrajectory")
+  LOAD_SYM(MySendAdvanceTrajectory,    int(*)(TrajectoryPoint),        "SendAdvanceTrajectory")
   LOAD_SYM(MyGetAngularPosition,       int(*)(AngularPosition &),      "GetAngularPosition")
   LOAD_SYM(MyGetAngularVelocity,       int(*)(AngularPosition &),      "GetAngularVelocity")
   LOAD_SYM(MyGetAngularCommand,        int(*)(AngularPosition &),      "GetAngularCommand")
@@ -148,6 +154,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(
   LOAD_SYM(MyStopControlAPI,           int(*)(),                       "StopControlAPI")
   LOAD_SYM(MySetAngularControl,        int(*)(),                       "SetAngularControl")
   LOAD_SYM(MyRefresDevicesList,        int(*)(),                       "RefresDevicesList")
+  LOAD_SYM(MyEraseAllTrajectories,     int(*)(),                       "EraseAllTrajectories")
 
 #undef LOAD_SYM
 
@@ -156,6 +163,7 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(
   hw_velocities_.assign(n, std::numeric_limits<double>::quiet_NaN());
   hw_efforts_.assign(n, 0.0);
   hw_commands_.assign(n, 0.0);
+  hw_position_commands_.assign(n, std::numeric_limits<double>::quiet_NaN());
 
   RCLCPP_INFO(LOGGER, "I N I T I A L I Z A T I O N   C O M P L E T E D  (%zu joints)", n);
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -181,8 +189,9 @@ std::vector<hardware_interface::CommandInterface>
 KinovaSystemHardware::export_command_interfaces()
 {
   std::vector<hardware_interface::CommandInterface> ci;
-  ci.reserve(info_.joints.size());
+  ci.reserve(info_.joints.size() * 2);
   for (size_t i = 0; i < info_.joints.size(); ++i) {
+    ci.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &hw_position_commands_[i]);
     ci.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &hw_commands_[i]);
   }
   return ci;
@@ -314,6 +323,12 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_activate(
 
   MySetAngularControl();
   velocity_commands_active_ = false;
+  position_commands_active_ = false;
+
+  // Reset position shadows to NaN so the first read() populates them from
+  // raw kinDegToRad (no stale wrapped/accumulated offset from a prior session).
+  std::fill(hw_positions_.begin(), hw_positions_.end(),
+            std::numeric_limits<double>::quiet_NaN());
 
   // Start the background USB polling thread (SCHED_OTHER).
   // Shadow buffers are zero-initialised; the poller fills them within ~10 ms.
@@ -332,12 +347,17 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   velocity_commands_active_ = false;
+  position_commands_active_ = false;
 
   poller_running_.store(false);
   if (poller_thread_.joinable()) {
     poller_thread_.join();
   }
 
+  // Flush the trajectory FIFO so any queued position waypoints (especially
+  // from an aborted trajectory) do not replay on the next activation.
+  // kinova_comm::stopAPI() does the same: eraseAllTrajectories() then stopControlAPI().
+  MyEraseAllTrajectories();
   MyStopControlAPI();
   RCLCPP_INFO(LOGGER, "Hardware deactivated.");
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -433,22 +453,65 @@ hardware_interface::return_type KinovaSystemHardware::perform_command_mode_switc
   const std::vector<std::string> & start_interfaces,
   const std::vector<std::string> & stop_interfaces)
 {
+  // Process stops first, then starts.  If both contain the same interface
+  // (e.g. velocity_force_controller stops while JTAC starts), the start
+  // result wins, which is the correct behaviour.
+  for (const auto & iface : stop_interfaces) {
+    if (iface.find(hardware_interface::HW_IF_VELOCITY) != std::string::npos) {
+      velocity_commands_active_ = false;
+    }
+    if (iface.find(hardware_interface::HW_IF_POSITION) != std::string::npos) {
+      position_commands_active_ = false;
+    }
+  }
   for (const auto & iface : start_interfaces) {
     if (iface.find(hardware_interface::HW_IF_VELOCITY) != std::string::npos) {
       velocity_commands_active_ = true;
     }
-  }
-  for (const auto & iface : stop_interfaces) {
-    if (iface.find(hardware_interface::HW_IF_VELOCITY) != std::string::npos) {
-      velocity_commands_active_ = false;
+    if (iface.find(hardware_interface::HW_IF_POSITION) != std::string::npos) {
+      position_commands_active_ = true;
     }
   }
   return hardware_interface::return_type::OK;
 }
 
 // ---------------------------------------------------------------------------
-// read
-//   Copy the latest state from the poller's shadow buffers into the hw_*
+// kinDegToRad / radToKinDeg
+//   Paired conversion functions for the Kinova 2's-complement degree convention.
+//
+//   The Kinova Gen2 API uses 0..360° for all angular values:
+//     0..180   → positive (same as standard)
+//     360..181 → negative  (e.g. 240° means -120°)
+//
+//   kinDegToRad: SDK → ROS  (used in read())
+//     NOTE: this function has a ±2π discontinuity at exactly 180°/181°.
+//     read() applies per-joint unwrapping to remove it for position feedback.
+//     It is safe to use without unwrapping for velocities (very small values).
+//
+//   radToKinDeg: ROS → SDK  (used in write() position mode)
+//     Handles accumulated/unwrapped angles (e.g. 7.0 rad → 401° → 41° mod 360).
+// ---------------------------------------------------------------------------
+static inline double kinDegToRad(float deg)
+{
+  double d = static_cast<double>(deg);
+  if (d > 180.0) {
+    d -= 360.0;
+  }
+  return d * (M_PI / 180.0);
+}
+
+static inline float radToKinDeg(double rad)
+{
+  // Use fmod so accumulated/unwrapped angles (> π or < -π) map correctly
+  // into the Kinova 0-360° convention without truncation.
+  double deg = std::fmod(rad * (180.0 / M_PI), 360.0);
+  if (deg < 0.0) {
+    deg += 360.0;
+  }
+  return static_cast<float>(deg);
+}
+
+
 //   vectors exposed as state interfaces.  This is a pure memory operation —
 //   no USB I/O — so it always returns in nanoseconds on the RT thread.
 //
@@ -467,19 +530,38 @@ hardware_interface::return_type KinovaSystemHardware::read(
     torq = torq_shadow_;
   }
 
-  hw_positions_[0] = pos.Actuators.Actuator1 * DEG_TO_RAD;
-  hw_positions_[1] = pos.Actuators.Actuator2 * DEG_TO_RAD;
-  hw_positions_[2] = pos.Actuators.Actuator3 * DEG_TO_RAD;
-  hw_positions_[3] = pos.Actuators.Actuator4 * DEG_TO_RAD;
-  hw_positions_[4] = pos.Actuators.Actuator5 * DEG_TO_RAD;
-  hw_positions_[5] = pos.Actuators.Actuator6 * DEG_TO_RAD;
+  // ── Position feedback — with 180° discontinuity unwrapping ────────────────
+  // kinDegToRad() has a ±2π jump at exactly 180°/181° (Kinova 2-complement).
+  // If a continuous joint (1, 4, 5, 6) crosses through 180°, the raw value
+  // would jump by ~6.28 rad.  JTAC would see a huge position error and fire
+  // a massive corrective velocity in the wrong direction.
+  //
+  // Fix: compare each new reading to the previous value.  If the delta
+  // exceeds ±π the joint just crossed the discontinuity — correct by ∓2π.
+  // Consecutive reads never differ by more than ~0.01 rad at the arm's top
+  // speed (~1 rad/s × 10 ms poll period), so the threshold is unambiguous.
+  const float raw_pos[6] = {
+    pos.Actuators.Actuator1, pos.Actuators.Actuator2, pos.Actuators.Actuator3,
+    pos.Actuators.Actuator4, pos.Actuators.Actuator5, pos.Actuators.Actuator6};
+  const float raw_vel[6] = {
+    vel.Actuators.Actuator1, vel.Actuators.Actuator2, vel.Actuators.Actuator3,
+    vel.Actuators.Actuator4, vel.Actuators.Actuator5, vel.Actuators.Actuator6};
 
-  hw_velocities_[0] = vel.Actuators.Actuator1 * DEG_TO_RAD;
-  hw_velocities_[1] = vel.Actuators.Actuator2 * DEG_TO_RAD;
-  hw_velocities_[2] = vel.Actuators.Actuator3 * DEG_TO_RAD;
-  hw_velocities_[3] = vel.Actuators.Actuator4 * DEG_TO_RAD;
-  hw_velocities_[4] = vel.Actuators.Actuator5 * DEG_TO_RAD;
-  hw_velocities_[5] = vel.Actuators.Actuator6 * DEG_TO_RAD;
+  for (size_t i = 0; i < hw_positions_.size(); ++i) {
+    double new_pos = kinDegToRad(raw_pos[i]);
+    if (!std::isnan(hw_positions_[i])) {
+      const double delta = new_pos - hw_positions_[i];
+      if      (delta >  M_PI) new_pos -= 2.0 * M_PI;
+      else if (delta < -M_PI) new_pos += 2.0 * M_PI;
+    }
+    hw_positions_[i] = new_pos;
+
+    // Kinova firmware returns GetAngularVelocity at half the actual value.
+    // kinova_comm.cpp line 623: "velocities reported back by firmware
+    // seem to be half of actual value".
+    // No unwrapping needed: velocities are small and never approach ±π rad/s.
+    hw_velocities_[i] = 2.0 * kinDegToRad(raw_vel[i]);
+  }
 
   // Gravity-free torque — units already N·m from the SDK.
   hw_efforts_[0] = torq.Actuators.Actuator1;
@@ -494,23 +576,62 @@ hardware_interface::return_type KinovaSystemHardware::read(
 
 // ---------------------------------------------------------------------------
 // write
-//   Send angular velocity commands to the arm via SendBasicTrajectory.
-//   This mirrors the velocity-streaming loop in kinova_ang_control.cpp:
+//   Send angular position or velocity commands to the arm via SendBasicTrajectory.
 //
+//   Position mode (JTAC with command_interface_type: position):
+//     pointToSend.Position.Type = ANGULAR_POSITION;
+//     pointToSend.Position.Actuators.Actuator1 = <deg>;
+//     EraseAllTrajectories() is called first to flush the FIFO so each write
+//     imposes a fresh setpoint instead of queuing.  At 200 Hz the arm always
+//     moves toward the latest command.  Without the flush, the 2000-point FIFO
+//     would accumulate and the arm would lag behind the commanded trajectory.
+//
+//   Velocity mode (joint_velocity_controller):
 //     pointToSend.Position.Type = ANGULAR_VELOCITY;
-//     pointToSend.Position.Actuators.Actuator1 = <deg/s>;
-//     MySendBasicTrajectory(pointToSend);  // called every 5 ms
+//     Mirror of the streaming loop in kinova_ang_control.cpp.
 //
-//   The arm's internal FIFO accepts commands and returns immediately, making
-//   this safe to call from the 200 Hz SCHED_FIFO RT thread.
-//
-//   Commands are gated by velocity_commands_active_: during the joint_state_
-//   broadcaster-only startup phase (before any motion controller is loaded),
-//   this prevents pre-filling the trajectory FIFO with stale zero commands.
+//   Both variants are gated by their respective *_commands_active_ flags set
+//   in perform_command_mode_switch().  NaN position commands (before JTAC
+//   initialises the interface) are silently skipped.
 // ---------------------------------------------------------------------------
 hardware_interface::return_type KinovaSystemHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
+  if (position_commands_active_) {
+    // Guard against NaN (hw_position_commands_ initialised to NaN in on_init;
+    // JTAC writes valid values before any motion starts).
+    for (const auto & v : hw_position_commands_) {
+      if (std::isnan(v)) {
+        return hardware_interface::return_type::OK;
+      }
+    }
+
+    // Flush the FIFO so this point is executed immediately, not appended after
+    // potentially hundreds of previously queued waypoints.
+    MyEraseAllTrajectories();
+
+    TrajectoryPoint cmd;
+    cmd.InitStruct();
+    cmd.Position.Type = ANGULAR_POSITION;
+
+    // Convert ROS rad → Kinova degrees (0–360 convention).
+    // ROS uses wrapped angles (-π to +π); Kinova expects 0–360.
+    // radToKinDeg() is the inverse of kinDegToRad() applied in read().
+    cmd.Position.Actuators.Actuator1 = radToKinDeg(hw_position_commands_[0]);
+    cmd.Position.Actuators.Actuator2 = radToKinDeg(hw_position_commands_[1]);
+    cmd.Position.Actuators.Actuator3 = radToKinDeg(hw_position_commands_[2]);
+    cmd.Position.Actuators.Actuator4 = radToKinDeg(hw_position_commands_[3]);
+    cmd.Position.Actuators.Actuator5 = radToKinDeg(hw_position_commands_[4]);
+    cmd.Position.Actuators.Actuator6 = radToKinDeg(hw_position_commands_[5]);
+
+    cmd.Position.Fingers.Finger1 = 0.0f;
+    cmd.Position.Fingers.Finger2 = 0.0f;
+    cmd.Position.Fingers.Finger3 = 0.0f;
+
+    MySendAdvanceTrajectory(cmd);
+    return hardware_interface::return_type::OK;
+  }
+
   if (!velocity_commands_active_) {
     return hardware_interface::return_type::OK;
   }
@@ -532,6 +653,12 @@ hardware_interface::return_type KinovaSystemHardware::write(
   cmd.Position.Fingers.Finger2 = 0.0f;
   cmd.Position.Fingers.Finger3 = 0.0f;
 
+  // For ANGULAR_VELOCITY streaming at 200 Hz, use SendBasicTrajectory — this
+  // is exactly what the official SDK example kinova_ang_control.cpp does:
+  //   for (int i = 0; i < 300; i++) { MySendBasicTrajectory(pt); usleep(5000); }
+  // Do NOT call EraseAllTrajectories here; streaming velocity does not use
+  // the trajectory FIFO the same way position waypoints do, and erasing every
+  // cycle adds an extra blocking USB call in the RT write() path.
   MySendBasicTrajectory(cmd);
 
   return hardware_interface::return_type::OK;
