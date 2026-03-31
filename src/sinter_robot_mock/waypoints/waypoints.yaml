@@ -35,3 +35,79 @@
     twist: []
     wrench: []
   name: Home
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.5708441305364635
+    - 4.138845814335263
+    - 3.0167045132188544
+    - -0.9075337270447085
+    - -0.06992997466070838
+    - -2.3504005169247684
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Out
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.7241098502188508
+    - 3.9380868776690567
+    - 0.9622252021389027
+    - 0.5754903362804383
+    - -2.1109362622397865
+    - -2.3929157531990115
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Pre-Path
