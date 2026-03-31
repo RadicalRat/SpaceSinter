@@ -1,10 +1,11 @@
 controller_manager:
   ros__parameters:
-    # 200 Hz matches the Kinova SDK's recommended 5 ms command interval
-    # (kinova_ang_control.cpp: usleep(5000) between SendBasicTrajectory calls).
-    # write() enqueues to the arm's internal FIFO and returns in microseconds,
-    # so 200 Hz is safe on the SCHED_FIFO RT thread.
-    update_rate: 200 # Hz
+    # 100 Hz (10 ms period) — the Kinova SDK reference code uses usleep(5000) between
+    # SendBasicTrajectory calls as a minimum gap. At 200 Hz any scheduler jitter caused
+    # back-to-back calls that flooded the arm's internal FIFO, stacking velocity commands
+    # that executed late and produced the growing position lag seen in testing.
+    # 100 Hz gives 10 ms headroom and still provides smooth velocity-mode control.
+    update_rate: 100 # Hz
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
     joint_trajectory_admittance_controller:
@@ -21,14 +22,6 @@ joint_trajectory_admittance_controller:
   ros__parameters:
     # Joint group to control.
     planning_group_name: manipulator
-    # Use position command interfaces — hardware driver accepts position trajectory points.
-    
-    command_interfaces:
-      - velocity
-
-    state_interfaces:
-      - position
-      - velocity
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
     ee_frame: j2n6s300_focal_point
     # The frame where the force / torque sensor reading is given.
@@ -45,8 +38,9 @@ joint_trajectory_admittance_controller:
       - 30.0
       - 30.0
     # Kinova SDK has inherent USB polling lag (~5ms), so tracking error is higher
-    # than a direct-drive robot. 0.1 rad gives headroom without masking real faults.
-    default_path_tolerance: 0.1
+    # than a direct-drive robot. 0.15 rad gives headroom for deceleration overshoot
+    # at the end of trajectory segments without masking real faults.
+    default_path_tolerance: 0.15
     default_goal_tolerance: 0.05
 
 velocity_force_controller:
@@ -121,12 +115,12 @@ joint_velocity_controller:
       - 2.0
       - 2.0
       - 2.0
-    command_interfaces:
-      - velocity
-    state_interfaces:
-      - position
-      - velocity
+    command_interfaces: ["velocity"]
+    state_interfaces: ["position", "velocity"]
     # Padding (in radians) to add to joint position limits as a safety margin.
     joint_limit_position_tolerance: 0.02
     # Timeout in seconds after which the controller will stop motion if no new commands are received.
     command_timeout: 0.2
+    # Controller state publishing rate (Hz)
+    state_publish_rate: 20
+    
