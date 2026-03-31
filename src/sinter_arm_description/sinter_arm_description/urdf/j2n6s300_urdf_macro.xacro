@@ -326,7 +326,7 @@
     <joint name="${prefix}_suncam_joint" type="fixed">
       <parent link="${prefix}_lens"/>
       <child link="${prefix}_suncam_optical"/>
-      <origin xyz="-0.09436 -0.203 -0.03567" rpy="${PI} 0 0"/>
+      <origin xyz="-0.065 -0.203 -0.03567" rpy="${PI} 0 0"/>
     </joint>
 
 
