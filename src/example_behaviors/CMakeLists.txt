@@ -4,6 +4,9 @@ project(example_behaviors CXX)
 find_package(moveit_studio_common REQUIRED)
 find_package(example_interfaces REQUIRED)
 moveit_studio_package()
+find_package(moveit_studio_behavior_interface REQUIRED)
+# Ensure CSPICE is linked
+target_link_libraries(my_behaviors_lib PRIVATE moveit_studio_behavior_interface::moveit_studio_behavior_interface cspice)
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS cartesian_planning moveit_pro_behavior
   moveit_pro_behavior_interface pluginlib moveit_studio_vision

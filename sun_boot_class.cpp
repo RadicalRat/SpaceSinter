@@ -119,3 +119,6 @@ BT::NodeStatus GetSolarPointing::tick() {
   kclear_c(); // Important to prevent memory leaks/pool overflows
   return BT::NodeStatus::SUCCESS;
 }
+
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(my_robot_behaviors::GetSolarPointing, BT::TreeNodeBase)
