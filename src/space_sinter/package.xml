@@ -46,5 +46,6 @@
 
   <export>
       <build_type>ament_cmake</build_type>
+      <moveit_studio_behavior_interface plugin="${prefix}/behaviors.xml" />
   </export>
 </package>

@@ -4,7 +4,7 @@
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <Eigen/Geometry>
 
-namespace my_robot_behaviors {
+namespace space_sinter {
 
 class GetSolarPointing : public moveit_studio_behavior_interface::SharedResourcesNode {
 public:
@@ -24,7 +24,7 @@ public:
   BT::NodeStatus tick() override;
 };
 
-} // namespace my_robot_behaviors
+} // namespace space_sinter
 
 BT::NodeStatus GetSolarPointing::tick() {
   // 1. Get Input from BT
@@ -121,4 +121,4 @@ BT::NodeStatus GetSolarPointing::tick() {
 }
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(my_robot_behaviors::GetSolarPointing, BT::TreeNodeBase)
+PLUGINLIB_EXPORT_CLASS(space_sinter::GetSolarPointing, BT::TreeNodeBase)

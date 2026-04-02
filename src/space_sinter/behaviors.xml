@@ -1,0 +1,12 @@
+<root>
+  <BehaviorPlugin library_name="space_sinter_lib">
+    
+    <Class type="space_sinter::GetSolarPointing" 
+           base_class_type="moveit_studio_behavior_interface::SharedResourcesNode">
+      <Description>
+        Uses SPICE kernels to calculate solar position for Golden, CO and outputs a Kinova-aligned quaternion.
+      </Description>
+    </Class>
+
+  </BehaviorPlugin>
+</root>
