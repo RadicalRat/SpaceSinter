@@ -17,7 +17,7 @@
 //
 // read():  USB calls on the control thread. pos+vel every cycle,
 //          effort every 10th (~20 Hz at 200 Hz loop). No background thread.
-// write(): Position — P-controller (Kp=3, max 20 deg/s) → ANGULAR_VELOCITY.
+// write(): Position — PID-controller + velocity feedforward → ANGULAR_VELOCITY.
 //          Velocity — direct rad/s → deg/s → ANGULAR_VELOCITY.
 //
 // USB setup (host, run once before first use):
@@ -128,6 +128,8 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(
   hw_vel_cmds_.assign(n, 0.0);
   hw_pos_cmds_.assign(n, std::numeric_limits<double>::quiet_NaN());
   hw_pos_cmds_prev_.assign(n, std::numeric_limits<double>::quiet_NaN());
+  pid_integral_.assign(n, 0.0);
+  static_hold_count_.assign(n, 0);
 
   RCLCPP_INFO(LOGGER, "Initialized (%zu joints).", n);
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -247,6 +249,8 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_activate(
   write_log_counter_ = 0;
   read_iter_ = 0;
   hw_pos_cmds_prev_.assign(hw_pos_cmds_.size(), std::numeric_limits<double>::quiet_NaN());
+  pid_integral_.assign(hw_pos_cmds_.size(), 0.0);
+  static_hold_count_.assign(hw_pos_cmds_.size(), 0);
 
   RCLCPP_INFO(LOGGER, "Hardware activated.");
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -299,8 +303,11 @@ hardware_interface::return_type KinovaSystemHardware::perform_command_mode_switc
   for (const auto & iface : start_interfaces) {
     if (iface.find(hardware_interface::HW_IF_VELOCITY) != std::string::npos)
       velocity_commands_active_ = true;
-    if (iface.find(hardware_interface::HW_IF_POSITION) != std::string::npos)
+    if (iface.find(hardware_interface::HW_IF_POSITION) != std::string::npos) {
       position_commands_active_ = true;
+      pid_integral_.assign(pid_integral_.size(), 0.0);
+      static_hold_count_.assign(static_hold_count_.size(), 0);
+    }
   }
   return hardware_interface::return_type::OK;
 }
@@ -335,15 +342,23 @@ hardware_interface::return_type KinovaSystemHardware::read(
 
   for (size_t i = 0; i < hw_positions_.size(); ++i) {
     double new_pos = static_cast<double>(rp[i]) * DEG_TO_RAD;
-    if (!std::isnan(hw_positions_[i])) {
+    if (std::isnan(hw_positions_[i])) {
+      // First read after activation: normalize continuous joints to (−π, π]
+      // so the initial reported position matches the planner's stored convention.
+      if (NORMALIZE[i]) {
+        while (new_pos >  M_PI) new_pos -= 2.0 * M_PI;
+        while (new_pos <= -M_PI) new_pos += 2.0 * M_PI;
+      }
+    } else {
+      // Subsequent reads: preserve continuity across the ±π boundary.
+      // The anti-jump correction absorbs SDK wrap-arounds (e.g. 359°→1°)
+      // without forcing the value back into (−π, π].  Re-normalising on every
+      // cycle would produce a 2π step in reported position each time a continuous
+      // joint crosses ±π, which the trajectory controller's path-tolerance check
+      // treats as a ~6.28 rad deviation and aborts the trajectory.
       const double delta = new_pos - hw_positions_[i];
       if      (delta >  M_PI) new_pos -= 2.0 * M_PI;
       else if (delta < -M_PI) new_pos += 2.0 * M_PI;
-    }
-    // Normalize continuous joints to (-π, π] once per cycle.
-    if (NORMALIZE[i]) {
-      while (new_pos >  M_PI) new_pos -= 2.0 * M_PI;
-      while (new_pos <= -M_PI) new_pos += 2.0 * M_PI;
     }
     hw_positions_[i]  = new_pos;
     hw_velocities_[i] = 2.0 * kinVelToRad(rv[i]);
@@ -364,25 +379,30 @@ hardware_interface::return_type KinovaSystemHardware::read(
 }
 
 // ---------------------------------------------------------------------------
-// write — PF-controller (position mode) or direct passthrough (velocity mode).
-//   Position: velocity feedforward + clamped P-correction → ANGULAR_VELOCITY.
+// write — PID-controller + velocity FF (position mode), or direct passthrough (velocity mode).
+//   Position: vel_cmd = clamp(ff,±MAX_FF) + clamp(Kp×err,±MAX_P) + clamp(Ki×∫err,±MAX_I)
+//                       + Kd×(sp_vel - actual_vel)
 //
-//     vel_cmd = clamp(ff, ±MAX_FF) + clamp(Kp × err, ±MAX_P)
-//
-//   Capping ff and P *separately* is intentional:
-//     FF_GAIN=0.5   — use half of the trajectory velocity as feedforward.
-//       Full ff (1.0) caused deceleration overshoot: during the decel phase the
-//       trajectory setpoint slows but the arm has momentum; ff was still ~20 deg/s
-//       while MAX_P=15 could only oppose at -15 — net still +5 in the wrong direction.
-//       At 0.5, peak ff≈10 deg/s so MAX_P=25 wins during decelerating overshoot.
+//     FF_GAIN=0.5   — half trajectory velocity as feedforward. Full ff caused decel
+//       overshoot; at 0.5, MAX_P=25 wins during the decelerating phase.
 //     MAX_FF=30 deg/s  — hard cap on the ff term.
-//     MAX_P=25 deg/s   — P correction cap. Large enough to fight ff during overshoot
-//       without causing violent post-abort oscillation (25 deg/s × 50ms lag = 0.022 rad
-//       overshoot per bounce → stable convergence; old 60 deg/s gave 2-3 rad oscillation).
-//     Kp=6 s⁻¹ handles steady-state lag. At peak traj vel ~20 deg/s:
-//       lag ≈ (1-FF_GAIN) × 20 / (Kp × 57.3) ≈ 0.029 rad — well within 0.15 tolerance.
+//     MAX_P=25 deg/s   — P correction cap; prevents violent post-abort oscillation.
+//     Kp=6 s⁻¹   — handles steady-state tracking lag.
+//     Ki=0.5 s⁻² — small integral to eliminate persistent steady-state offset.
+//     MAX_I=10 deg/s — anti-windup clamp on the integral contribution.
+//     Kd=0.6 s    — D is derivative-of-error (sp_vel − actual_vel); damps oscillation
+//       at static setpoints (sp_vel=0 → D=−Kd×vel) without opposing FF during
+//       trajectory tracking (sp_vel≈actual_vel → D≈0).
+//   Position error for continuous joints (1,4,5,6) is wrapped to (−π, π] to
+//     prevent the 2π phantom error when the measured position crosses the ±π
+//     boundary (e.g. cmd=+π, pos=−π → true err≈0, naïve subtraction = 2π).
+//   Static-hold deadband (STATIC_DEADBAND_RAD=0.010 rad, ~0.57°):
+//     When the setpoint is not moving (|sp_vel|<0.01 rad/s) and |err|<deadband,
+//     P is zeroed and I accumulation pauses. This breaks the relay/bang-bang limit
+//     cycle that would otherwise form from P alone at a fixed setpoint. D remains
+//     active inside the deadband to damp any residual arm velocity.
 //   Velocity: rad/s → deg/s → ANGULAR_VELOCITY.
-//   Both paths log every 20 cycles (~0.1 s at 200 Hz) for debugging.
+//   Position path logs every 20 cycles (~0.1 s at 200 Hz) for debugging.
 // ---------------------------------------------------------------------------
 hardware_interface::return_type KinovaSystemHardware::write(
   const rclcpp::Time &, const rclcpp::Duration & period)
@@ -391,29 +411,100 @@ hardware_interface::return_type KinovaSystemHardware::write(
     for (const auto & v : hw_pos_cmds_)
       if (std::isnan(v)) return hardware_interface::return_type::OK;
 
-    constexpr double KP           = 6.0;
+    constexpr double KP           = 6.0;   // s⁻¹
+    constexpr double KI           = 0.2;   // s⁻²  — eliminates steady-state offset; kept low to limit windup
+    // KD must damp oscillations without saturating the output cap (which causes relay oscillation).
+    // At peak oscillation velocity ~40 deg/s: D = 1.0×40 = 40 deg/s > P_max(25)+I_max(10) = 35 deg/s.
+    // Net braking of 5 deg/s → oscillation damps within 2-3 cycles.
+    // KD=3.0 saturated at 3.0×20=60 on every cycle → bang-bang → divergence (do not raise above ~1.2).
+    constexpr double KD           = 1.0;   // s    — derivative-of-error damping
     constexpr double FF_GAIN      = 0.5;   // half trajectory velocity — prevents decel overshoot
     constexpr double MAX_FF_DEG_S = 30.0;  // trajectory velocity cap (~Gen2 firmware limit)
-    constexpr double MAX_P_DEG_S  = 25.0;  // P correction cap — enough to outfight ff when overshooting
-    constexpr double KP_TO_DEG    = KP * (180.0 / M_PI);
+    constexpr double MAX_P_DEG_S        = 25.0;  // P correction cap during trajectory tracking
+    constexpr double MAX_P_STATIC_DEG_S  =  5.0;  // reduced P cap during static hold — limits equilibrium
+                                                   //   approach speed to ~5 deg/s so the arm doesn't coast
+                                                   //   through the target on trajectory end. With KD=1.0, the
+                                                   //   P/D balance point is MAX_P/KD_DEG = 5/57.3 = 0.087 r/s.
+                                                   //   At 200ms firmware lag, overshoot ≤ 5×0.2 = 1° < deadband.
+    constexpr double MAX_I_DEG_S        = 10.0;  // integral cap during trajectory tracking (anti-windup)
+    constexpr double MAX_I_STATIC_DEG_S =  5.0;  // reduced integral cap during static hold
+    constexpr double MAX_VEL_DEG_S = 80.0; // global output cap
+    // Deadband: when the setpoint is stationary and error is small, zero P and pause
+    // I accumulation to prevent the relay/bang-bang limit cycle that forms at static holds.
+    // D remains active inside the deadband to damp any residual arm velocity.
+    constexpr double STATIC_VEL_THRESH_RAD_S = 0.01;  // sp_vel below this → static hold
+    constexpr double STATIC_DEADBAND_RAD     = 0.030; // ~1.7° — P+I cutoff at static hold; wide enough to absorb arm chatter
+    constexpr double KP_TO_DEG    = KP * RAD_TO_DEG;
+    constexpr double KI_TO_DEG    = KI * RAD_TO_DEG;
+    constexpr double KD_TO_DEG    = KD * RAD_TO_DEG;
+
+    const bool NORMALIZE[6] = {true, false, false, true, true, true};
 
     const double period_sec = period.seconds();
 
     double errs[6], vels[6];
     for (size_t i = 0; i < hw_pos_cmds_.size(); ++i) {
-      // Velocity feedforward: derivative of the command setpoint.
-      double ff = 0.0;
+      // Setpoint velocity (rad/s) — shared by FF and D terms.
+      double sp_vel = 0.0;
       if (period_sec > 1e-6 && !std::isnan(hw_pos_cmds_prev_[i]))
-        ff = FF_GAIN * (hw_pos_cmds_[i] - hw_pos_cmds_prev_[i]) / period_sec * RAD_TO_DEG;
+        sp_vel = (hw_pos_cmds_[i] - hw_pos_cmds_prev_[i]) / period_sec;
       hw_pos_cmds_prev_[i] = hw_pos_cmds_[i];
-      // Clamp ff and P separately so post-abort recovery is always limited to MAX_P.
+
+      // FF: half the setpoint velocity — prevents decel-phase overshoot.
+      double ff = FF_GAIN * sp_vel * RAD_TO_DEG;
       if (ff >  MAX_FF_DEG_S) ff =  MAX_FF_DEG_S;
       if (ff < -MAX_FF_DEG_S) ff = -MAX_FF_DEG_S;
-      double p = errs[i] = hw_pos_cmds_[i] - hw_positions_[i];
-      p *= KP_TO_DEG;
-      if (p >  MAX_P_DEG_S) p =  MAX_P_DEG_S;
-      if (p < -MAX_P_DEG_S) p = -MAX_P_DEG_S;
-      vels[i] = ff + p;
+
+      // Raw error — wrap to (−π, π] for continuous joints to prevent the 2π
+      // phantom error when the measured position crosses the ±π boundary.
+      double raw_err = hw_pos_cmds_[i] - hw_positions_[i];
+      if (NORMALIZE[i]) {
+        while (raw_err >  M_PI) raw_err -= 2.0 * M_PI;
+        while (raw_err <= -M_PI) raw_err += 2.0 * M_PI;
+      }
+      errs[i] = raw_err;
+      // Static-hold detection: require 20 consecutive cycles with |sp_vel|<thresh
+      // (~0.1 s at 200 Hz) before treating the setpoint as stationary.
+      // A single cycle with sp_vel=0 (e.g. duplicate cmd tick during trajectory)
+      // does NOT count as a static hold and must not reset the integral.
+      constexpr int STATIC_HOLD_CYCLES = 20;
+      if (std::abs(sp_vel) < STATIC_VEL_THRESH_RAD_S) {
+        ++static_hold_count_[i];
+      } else {
+        static_hold_count_[i] = 0;
+      }
+      const bool at_static = (static_hold_count_[i] >= STATIC_HOLD_CYCLES);
+      // On the first cycle that crosses the static-hold threshold, reset the integral
+      // so trajectory-tracking windup cannot drive a post-arrival overshoot.
+      if (static_hold_count_[i] == STATIC_HOLD_CYCLES) {
+        pid_integral_[i] = 0.0;
+      }
+      double err = (at_static && std::abs(raw_err) < STATIC_DEADBAND_RAD) ? 0.0 : raw_err;
+
+      // P term — cap is lower during static hold to limit approach speed and prevent overshoot.
+      const double max_p_eff = at_static ? MAX_P_STATIC_DEG_S : MAX_P_DEG_S;
+      double p = err * KP_TO_DEG;
+      if (p >  max_p_eff) p =  max_p_eff;
+      if (p < -max_p_eff) p = -max_p_eff;
+
+      // I term — pauses accumulation inside deadband; cap also reduced during static hold.
+      const double max_i_eff = at_static ? MAX_I_STATIC_DEG_S : MAX_I_DEG_S;
+      if (period_sec > 1e-6)
+        pid_integral_[i] += err * period_sec;
+      double iterm = pid_integral_[i] * KI_TO_DEG;
+      if (iterm >  max_i_eff) { iterm =  max_i_eff; pid_integral_[i] =  max_i_eff / KI_TO_DEG; }
+      if (iterm < -max_i_eff) { iterm = -max_i_eff; pid_integral_[i] = -max_i_eff / KI_TO_DEG; }
+
+      // D term: derivative of error (sp_vel − actual_vel) → damps oscillation
+      // at static setpoints without opposing FF during trajectory tracking.
+      // Always active — provides velocity braking even inside the position deadband.
+      // KD=3.0 gives ζ≈0.61 with KP=6 — sufficient to kill the ±0.13 rad limit cycle.
+      double d = KD_TO_DEG * (sp_vel - hw_velocities_[i]);
+
+      double vel_cmd = ff + p + iterm + d;
+      if (vel_cmd >  MAX_VEL_DEG_S) vel_cmd =  MAX_VEL_DEG_S;
+      if (vel_cmd < -MAX_VEL_DEG_S) vel_cmd = -MAX_VEL_DEG_S;
+      vels[i] = vel_cmd;
     }
 
     TrajectoryPoint cmd;
@@ -430,7 +521,7 @@ hardware_interface::return_type KinovaSystemHardware::write(
     cmd.Position.Fingers.Finger3     = 0.0f;
     MySendBasicTrajectory(cmd);
 
-    if (write_log_counter_++ % 200 == 0) {
+    if (write_log_counter_++ % 20 == 0) {
       RCLCPP_INFO(LOGGER,
         "[pos] cmd=[%.3f %.3f %.3f %.3f %.3f %.3f] "
         "pos=[%.3f %.3f %.3f %.3f %.3f %.3f] "

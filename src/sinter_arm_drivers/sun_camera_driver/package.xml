@@ -16,6 +16,7 @@
   <!-- Runtime dependencies -->
   <exec_depend>sinter_arm_description</exec_depend>
   <depend>camera_ros</depend>
+  <depend>libcamera</depend>
 
   <!-- URDF + xacro -->
   <exec_depend>urdf</exec_depend>

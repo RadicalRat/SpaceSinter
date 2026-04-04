@@ -1,15 +1,17 @@
-image_width: 1280
-image_height: 720
-camera_name: "narrow_stereo"
+image_width: 1920
+image_height: 1080
+camera_name: "C_______________ducam_16MP___SB__PCI0_XHC__RHUB_HS04_4_1_0_0c45_636d_3840x2160"
+# NOTE: Placeholder values only — calibrate with kalibr or camera_calibration before use.
 camera_matrix:
   rows: 3
   cols: 3
-  data: [1000.0, 0.0, 640.0, 0.0, 1000.0, 360.0, 0.0, 0.0, 1.0]
-distortion_model: "plumb_bob"
+  data: [1000.0, 0.0, 1920.0, 0.0, 1000.0, 1080.0, 0.0, 0.0, 1.0]
+distortion_model: "equidistant"
+# equidistant (Kannala-Brandt) uses 4 coefficients: k1, k2, k3, k4
 distortion_coefficients:
   rows: 1
-  cols: 5
-  data: [0.0, 0.0, 0.0, 0.0, 0.0]
+  cols: 4
+  data: [0.0, 0.0, 0.0, 0.0]
 rectification_matrix:
   rows: 3
   cols: 3
@@ -17,4 +19,4 @@ rectification_matrix:
 projection_matrix:
   rows: 3
   cols: 4
-  data: [1000.0, 0.0, 640.0, 0.0, 0.0, 1000.0, 360.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+  data: [1000.0, 0.0, 1920.0, 0.0, 0.0, 1000.0, 1080.0, 0.0, 0.0, 0.0, 1.0, 0.0]

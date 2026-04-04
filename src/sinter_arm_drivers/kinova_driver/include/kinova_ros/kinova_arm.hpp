@@ -79,6 +79,8 @@ private:
   std::vector<double> hw_vel_cmds_;       // rad/s  — velocity command interface
   std::vector<double> hw_pos_cmds_;       // rad    — position command interface
   std::vector<double> hw_pos_cmds_prev_;  // previous cycle's pos cmds (for velocity feedforward)
+  std::vector<double> pid_integral_;      // rad·s  — error integral for I term
+  std::vector<int>    static_hold_count_; // consecutive write() cycles with |sp_vel|<thresh
 
   void * commLayer_handle_{nullptr};
   void * commandLayer_handle_{nullptr};
