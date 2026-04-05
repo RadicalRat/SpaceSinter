@@ -1,0 +1,14 @@
+enable_color: true
+rgb_camera.color_profile: 1280x720x15
+enable_depth: true
+align_depth.enable: false
+pointcloud.enable: true
+enable_sync: true
+publish_tf: true
+tf_publish_rate: 5.0
+depth_module.depth_profile: 1280x720x30
+# spatial_filter.enable: true
+# temporal_filter.enable: true
+base_frame_id: j2n6s300
+camera_name: realsense
+camera_namespace: realsense

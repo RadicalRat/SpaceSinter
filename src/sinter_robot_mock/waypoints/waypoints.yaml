@@ -17,12 +17,12 @@
     - j2n6s300_joint_5
     - j2n6s300_joint_6
     position:
-    - 3.751032436322231e-08
-    - 2.3561945826008297
-    - 1.57
-    - 0.7853981599832054
-    - 1.6581516328020385e-09
-    - 2.356194286663011
+    - -1.5695110852528238
+    - 2.357873346943531
+    - 1.5759130581972658
+    - 0.7851923676242124
+    - 0
+    - 2.3583761517573376
     velocity: []
   multi_dof_joint_state:
     header:
@@ -73,6 +73,44 @@
     twist: []
     wrench: []
   name: Out
+- description: Position for a pointcloud scan
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.6011387863586055
+    - 4.580248786049356
+    - 3.728366137618625
+    - -0.16982735257985832
+    - 0.8376685587446513
+    - 1.3146992995218247
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: PCScan
 - description: ''
   favorite: false
   joint_group_names:

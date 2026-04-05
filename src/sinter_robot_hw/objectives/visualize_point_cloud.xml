@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Visualize Point Cloud">
+  <BehaviorTree ID="Visualize Point Cloud" _description="" _favorite="false">
+    <Control ID="Sequence" name="TopLevelSequence">
+      <SubTree ID="Move to Waypoint" _collapsed="true" waypoint_name="PCScan" />
+      <Action
+        ID="GetPointCloud"
+        topic_name="/camera/camera/depth/color/points"
+        message_timeout_sec="5.000000"
+        message_out="{input_cloud}"
+      />
+      <Action ID="TransformPointCloudFrame" />
+      <Action
+        ID="CreateStampedPose"
+        position_xyz="0.0;-0.75;0;"
+        stamped_pose="{roi_frame}"
+        orientation_xyzw="-1.000; 0.000; -0.000; 0.000"
+      />
+      <Action ID="VisualizePose" pose="{roi_frame}" />
+      <Action
+        ID="CropPointsInBox"
+        crop_box_centroid_pose="{roi_frame}"
+        crop_box_size="0.4;0.2;1"
+        point_cloud="{output_cloud}"
+      />
+      <Action
+        ID="SendPointCloudToUI"
+        pcd_topic="/pcd_pointcloud_captures"
+        point_cloud="{point_cloud_cropped}"
+      />
+      <SubTree
+        ID="Visualize TF"
+        _collapsed="true"
+        marker_name="focal"
+        tf_frame_name="j2n6s300_focal_point"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Visualize Point Cloud" />
+  </TreeNodesModel>
+</root>

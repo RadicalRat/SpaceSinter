@@ -326,9 +326,22 @@
     <joint name="${prefix}_suncam_joint" type="fixed">
       <parent link="${prefix}_lens"/>
       <child link="${prefix}_suncam_optical"/>
-      <origin xyz="-0.065 -0.203 -0.03567" rpy="${PI} 0 0"/>
+      <origin xyz="0.065 -0.203 -0.03567" rpy="${PI} 0 0"/>
     </joint>
 
+
+    <!-- ========================================== -->
+    <!--   Realsense Camera Frame                   -->
+    <!--   Virtual frame — no geometry/inertia      -->
+    <!-- ========================================== -->
+
+    <link name="realsense_${prefix}"/>
+
+    <joint name="${prefix}_realsense_joint" type="fixed">
+      <parent link="${prefix}_lens"/>
+      <child link="realsense_${prefix}"/>
+      <origin xyz="-0.065 -0.203 -0.03567" rpy="${-PI/2} 0 ${PI}"/>
+    </joint>
 
 
   </xacro:macro>

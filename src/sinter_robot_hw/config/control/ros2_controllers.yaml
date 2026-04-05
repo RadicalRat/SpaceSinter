@@ -1,10 +1,7 @@
 controller_manager:
   ros__parameters:
-    # 100 Hz (10 ms period) — the Kinova SDK reference code uses usleep(5000) between
-    # SendBasicTrajectory calls as a minimum gap. At 200 Hz any scheduler jitter caused
-    # back-to-back calls that flooded the arm's internal FIFO, stacking velocity commands
-    # that executed late and produced the growing position lag seen in testing.
-    # 100 Hz gives 10 ms headroom and still provides smooth velocity-mode control.
+    # 100 Hz (10 ms period) — the ros2_control update loop rate.  USB I/O runs
+    # on a background thread; read()/write() only exchange data via mutex.
     update_rate: 100 # Hz
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -15,20 +12,19 @@ controller_manager:
     joint_velocity_controller:
       type: joint_velocity_controller/JointVelocityController
 
-#dont need to specify joint_state_broadcaster -> will send all joints
-
 
 joint_trajectory_admittance_controller:
   ros__parameters:
-    # Joint group to control.
     planning_group_name: manipulator
-    # The tip link of the kinematic chain, i.e. the frame that will be controlled.
-    ee_frame: j2n6s300_focal_point
-    # The frame where the force / torque sensor reading is given.
-    # (Needs to exist in the kinematic chain).
     sensor_frame: j2n6s300_link_6
-    # The name of the force torque sensor in the robot description which will be used in the admittance calculation.
-    # ft_sensor_name: tcp_fts_spositionensor
+    ee_frame: j2n6s300_focal_point
+    # ft_sensor_name: tcp_fts_sensor
+    # Path tolerance: max joint deviation allowed during trajectory execution.
+    # 0.5 rad matches UR/Franka configs — Gen2 USB latency (occasional 170ms+
+    # stalls) makes tighter values cause spurious aborts.
+    default_path_tolerance: 0.5
+    # Goal tolerance: max joint deviation at the trajectory endpoint.
+    default_goal_tolerance: 0.05
     # Joint accelerations chosen to match MoveIt configs.
     stop_accelerations:
       - 30.0
@@ -37,11 +33,9 @@ joint_trajectory_admittance_controller:
       - 30.0
       - 30.0
       - 30.0
-    # Kinova SDK has inherent USB polling lag (~5ms), so tracking error is higher
-    # than a direct-drive robot. 0.15 rad gives headroom for deceleration overshoot
-    # at the end of trajectory segments without masking real faults.
-    default_path_tolerance: 0.15
-    default_goal_tolerance: 0.05
+    # path_tolerance: 0.15
+    # goal_tolerance: 0.03
+
 
 velocity_force_controller:
   ros__parameters:
@@ -101,26 +95,23 @@ joint_velocity_controller:
     planning_group_name: manipulator
     # Maximum joint-space velocities.
     max_joint_velocity:
-      - 1.0
-      - 1.0
-      - 1.0
-      - 1.0
-      - 1.0
-      - 1.0
+      - 0.524
+      - 0.524
+      - 0.524
+      - 1.047
+      - 1.047
+      - 1.047
     # Maximum joint-space accelerations.
     max_joint_acceleration:
-      - 2.0
-      - 2.0
-      - 2.0
-      - 2.0
-      - 2.0
-      - 2.0
-    command_interfaces: ["velocity"]
-    state_interfaces: ["position", "velocity"]
+      - 52.4
+      - 52.4
+      - 52.4
+      - 52.4
+      - 52.4
+      - 52.4
     # Padding (in radians) to add to joint position limits as a safety margin.
     joint_limit_position_tolerance: 0.02
     # Timeout in seconds after which the controller will stop motion if no new commands are received.
     command_timeout: 0.2
-    # Controller state publishing rate (Hz)
+    # Rate in Hz at which the controller will publish the state.
     state_publish_rate: 20
-    

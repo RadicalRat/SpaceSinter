@@ -19,18 +19,14 @@ hardware:
       - hardware_interface: "physical"
 
 ros2_control:
-  # Hardware-specific controllers config: reduces update_rate from 500 Hz (mock)
-  # to 100 Hz so the Kinova USB read/write calls (3x synchronous reads + 1 write
-  # per cycle) don't starve DDS threads under SCHED_FIFO and cause switch timeouts.
+  # Hardware-specific controllers config: 100 Hz update rate.  USB I/O runs on a
+  # background thread so the control loop never blocks on USB.
   config:
     package: "sinter_robot_hw"
     path: "config/control/ros2_controllers.yaml"
 
-  # Physical hardware only exposes velocity command interfaces.
-  # joint_trajectory_admittance_controller requires position command interfaces
-  # and is kept inactive.  velocity_force_controller is the target for poseIK /
-  # pose_jog (see pose_jog.yaml).  joint_velocity_controller handles joint-space
-  # velocity objectives and servo.
+  # Hardware exposes both position and velocity command interfaces.
+  # JTAC (position) is active by default; VFC/JVC are available on switch.
   controllers_active_at_startup:
     - "joint_state_broadcaster"
     - "joint_trajectory_admittance_controller"

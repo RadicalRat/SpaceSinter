@@ -62,6 +62,8 @@ RUN usermod -aG dialout,video,plugdev ${USERNAME}
 RUN groupadd realtime && \
     usermod -a -G realtime ${USERNAME}
 
+
+
 # Install additional dependencies
 # You can also add any necessary apt-get install, pip install, etc. commands at this point.
 # NOTE: The /opt/overlay_ws folder contains MoveIt Pro binary packages and the source file.
@@ -74,6 +76,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rosdep install -q -y \
       --from-paths src \
       --ignore-src
+    
 
 # Set up colcon defaults for the new user
 USER ${USERNAME}

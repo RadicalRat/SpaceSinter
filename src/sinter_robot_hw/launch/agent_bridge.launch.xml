@@ -6,4 +6,8 @@
   <include 
     file="$(find-pkg-share sun_camera_driver)/launch/trackingcam_driver.launch.py"
   />
+  <include 
+    file="$(find-pkg-share realsense_driver)/launch/realsense_camera.launch.py"
+  />
+
 </launch>

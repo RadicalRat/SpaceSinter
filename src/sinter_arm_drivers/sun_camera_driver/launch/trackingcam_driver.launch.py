@@ -18,9 +18,9 @@ def generate_launch_description():
             'camera': 2,
             'frame_id': 'j2n6s300_suncam_optical',
             'camera_info_url': ['file://', config_path],
-            'orientation': 180,
-            'width': 1920,
-            'height': 1080,
+            'orientation': 0,
+            'width': 640,
+            'height': 480,
             'format': 'MJPEG',
             }],
     )

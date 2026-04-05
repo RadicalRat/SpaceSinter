@@ -1,5 +1,5 @@
-image_width: 1920
-image_height: 1080
+image_width: 640
+image_height: 480
 camera_name: "C_______________ducam_16MP___SB__PCI0_XHC__RHUB_HS04_4_1_0_0c45_636d_3840x2160"
 # NOTE: Placeholder values only — calibrate with kalibr or camera_calibration before use.
 camera_matrix:
