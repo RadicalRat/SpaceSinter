@@ -3,6 +3,7 @@
   <BehaviorTree ID="Visualize Point Cloud" _description="" _favorite="false">
     <Control ID="Sequence" name="TopLevelSequence">
       <SubTree ID="Move to Waypoint" _collapsed="true" waypoint_name="PCScan" />
+      <Action ID="WaitForDuration" delay_duration="2.000" />
       <Action
         ID="GetPointCloud"
         topic_name="/camera/camera/depth/color/points"
@@ -37,6 +38,11 @@
     </Control>
   </BehaviorTree>
   <TreeNodesModel>
-    <SubTree ID="Visualize Point Cloud" />
+    <SubTree ID="Visualize Point Cloud">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
   </TreeNodesModel>
 </root>
