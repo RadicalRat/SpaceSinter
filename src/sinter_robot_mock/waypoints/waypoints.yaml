@@ -149,3 +149,41 @@
     twist: []
     wrench: []
   name: Pre-Path
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.6009422450701578
+    - 4.164376208125308
+    - 2.5501615671305222
+    - 0.1583442680126274
+    - -0.7734885070026136
+    - 1.8237103439331057
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Scan_Initial
