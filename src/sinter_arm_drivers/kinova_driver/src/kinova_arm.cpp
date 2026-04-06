@@ -378,40 +378,40 @@ hardware_interface::return_type KinovaSystemHardware::read(
 
   ++read_log_counter_;
 
-  // Every-cycle tracking log when position mode is active (~2 Hz = every 50th cycle).
-  if (pos_active_ && (read_log_counter_ % 50 == 0)) {
-    RCLCPP_INFO(LOGGER,
-      "[read:TRACK] "
-      "pos=[%.4f %.4f %.4f %.4f %.4f %.4f] "
-      "cmd=[%.4f %.4f %.4f %.4f %.4f %.4f] "
-      "err=[%.4f %.4f %.4f %.4f %.4f %.4f]",
-      hw_positions_[0], hw_positions_[1], hw_positions_[2],
-      hw_positions_[3], hw_positions_[4], hw_positions_[5],
-      hw_pos_cmds_[0], hw_pos_cmds_[1], hw_pos_cmds_[2],
-      hw_pos_cmds_[3], hw_pos_cmds_[4], hw_pos_cmds_[5],
-      hw_pos_cmds_[0] - hw_positions_[0], hw_pos_cmds_[1] - hw_positions_[1],
-      hw_pos_cmds_[2] - hw_positions_[2], hw_pos_cmds_[3] - hw_positions_[3],
-      hw_pos_cmds_[4] - hw_positions_[4], hw_pos_cmds_[5] - hw_positions_[5]);
-  }
+  // // Every-cycle tracking log when position mode is active (~2 Hz = every 50th cycle).
+  // if (pos_active_ && (read_log_counter_ % 50 == 0)) {
+  //   RCLCPP_INFO(LOGGER,
+  //     "[read:TRACK] "
+  //     "pos=[%.4f %.4f %.4f %.4f %.4f %.4f] "
+  //     "cmd=[%.4f %.4f %.4f %.4f %.4f %.4f] "
+  //     "err=[%.4f %.4f %.4f %.4f %.4f %.4f]",
+  //     hw_positions_[0], hw_positions_[1], hw_positions_[2],
+  //     hw_positions_[3], hw_positions_[4], hw_positions_[5],
+  //     hw_pos_cmds_[0], hw_pos_cmds_[1], hw_pos_cmds_[2],
+  //     hw_pos_cmds_[3], hw_pos_cmds_[4], hw_pos_cmds_[5],
+  //     hw_pos_cmds_[0] - hw_positions_[0], hw_pos_cmds_[1] - hw_positions_[1],
+  //     hw_pos_cmds_[2] - hw_positions_[2], hw_pos_cmds_[3] - hw_positions_[3],
+  //     hw_pos_cmds_[4] - hw_positions_[4], hw_pos_cmds_[5] - hw_positions_[5]);
+  // }
 
-  // Periodic full diagnostic log (~every 5 s at 100 Hz update rate).
-  if (read_log_counter_ % 500 == 0) {
-    RCLCPP_INFO(LOGGER,
-      "[read] pos=[%.3f %.3f %.3f %.3f %.3f %.3f] "
-      "vel=[%.3f %.3f %.3f %.3f %.3f %.3f] "
-      "eff=[%.2f %.2f %.2f %.2f %.2f %.2f] | "
-      "usb cycle=%.1fms pos=%.1fms vel=%.1fms eff=%.1fms wr=%.1fms "
-      "n=%" PRIu64 " slow=%" PRIu64,
-      hw_positions_[0], hw_positions_[1], hw_positions_[2],
-      hw_positions_[3], hw_positions_[4], hw_positions_[5],
-      hw_velocities_[0], hw_velocities_[1], hw_velocities_[2],
-      hw_velocities_[3], hw_velocities_[4], hw_velocities_[5],
-      hw_efforts_[0], hw_efforts_[1], hw_efforts_[2],
-      hw_efforts_[3], hw_efforts_[4], hw_efforts_[5],
-      diag.cycle_ms, diag.read_pos_ms, diag.read_vel_ms,
-      diag.read_eff_ms, diag.write_ms,
-      diag.cycle_count, diag.slow_cycles);
-  }
+  // // Periodic full diagnostic log (~every 5 s at 100 Hz update rate).
+  // if (read_log_counter_ % 500 == 0) {
+  //   RCLCPP_INFO(LOGGER,
+  //     "[read] pos=[%.3f %.3f %.3f %.3f %.3f %.3f] "
+  //     "vel=[%.3f %.3f %.3f %.3f %.3f %.3f] "
+  //     "eff=[%.2f %.2f %.2f %.2f %.2f %.2f] | "
+  //     "usb cycle=%.1fms pos=%.1fms vel=%.1fms eff=%.1fms wr=%.1fms "
+  //     "n=%" PRIu64 " slow=%" PRIu64,
+  //     hw_positions_[0], hw_positions_[1], hw_positions_[2],
+  //     hw_positions_[3], hw_positions_[4], hw_positions_[5],
+  //     hw_velocities_[0], hw_velocities_[1], hw_velocities_[2],
+  //     hw_velocities_[3], hw_velocities_[4], hw_velocities_[5],
+  //     hw_efforts_[0], hw_efforts_[1], hw_efforts_[2],
+  //     hw_efforts_[3], hw_efforts_[4], hw_efforts_[5],
+  //     diag.cycle_ms, diag.read_pos_ms, diag.read_vel_ms,
+  //     diag.read_eff_ms, diag.write_ms,
+  //     diag.cycle_count, diag.slow_cycles);
+  // }
 
   return hardware_interface::return_type::OK;
 }
@@ -610,23 +610,23 @@ void KinovaSystemHardware::usb_io_thread_func()
         cmd.Position.Fingers.Finger3     = 0.0f;
         MySendBasicTrajectory(cmd);
 
-        // Verbose log every 50th cycle (~2 Hz).
-        if (write_counter % 50 == 0) {
-          RCLCPP_INFO(LOGGER,
-            "[usb_thread:POS] P-ctrl "
-            "err=[%.4f %.4f %.4f %.4f %.4f %.4f] "
-            "vel_cmd=[%.1f %.1f %.1f %.1f %.1f %.1f]dps "
-            "cmd=[%.4f %.4f %.4f %.4f %.4f %.4f] "
-            "pos=[%.4f %.4f %.4f %.4f %.4f %.4f]",
-            errors[0], errors[1], errors[2],
-            errors[3], errors[4], errors[5],
-            vel_deg[0], vel_deg[1], vel_deg[2],
-            vel_deg[3], vel_deg[4], vel_deg[5],
-            local_pos_cmds[0], local_pos_cmds[1], local_pos_cmds[2],
-            local_pos_cmds[3], local_pos_cmds[4], local_pos_cmds[5],
-            local_positions[0], local_positions[1], local_positions[2],
-            local_positions[3], local_positions[4], local_positions[5]);
-        }
+        // // Verbose log every 50th cycle (~2 Hz).
+        // if (write_counter % 50 == 0) {
+        //   RCLCPP_INFO(LOGGER,
+        //     "[usb_thread:POS] P-ctrl "
+        //     "err=[%.4f %.4f %.4f %.4f %.4f %.4f] "
+        //     "vel_cmd=[%.1f %.1f %.1f %.1f %.1f %.1f]dps "
+        //     "cmd=[%.4f %.4f %.4f %.4f %.4f %.4f] "
+        //     "pos=[%.4f %.4f %.4f %.4f %.4f %.4f]",
+        //     errors[0], errors[1], errors[2],
+        //     errors[3], errors[4], errors[5],
+        //     vel_deg[0], vel_deg[1], vel_deg[2],
+        //     vel_deg[3], vel_deg[4], vel_deg[5],
+        //     local_pos_cmds[0], local_pos_cmds[1], local_pos_cmds[2],
+        //     local_pos_cmds[3], local_pos_cmds[4], local_pos_cmds[5],
+        //     local_positions[0], local_positions[1], local_positions[2],
+        //     local_positions[3], local_positions[4], local_positions[5]);
+        // }
       } else {
         RCLCPP_INFO_THROTTLE(LOGGER, *rclcpp::Clock::make_shared(), 2000,
           "[usb_thread:POS] Waiting for valid commands (have NaN)");
@@ -679,18 +679,18 @@ void KinovaSystemHardware::usb_io_thread_func()
         ms_cycle, ms_pos, ms_vel, ms_eff, ms_wr);
     }
 
-    // Periodic state log from the USB thread (~every 5 s).
-    if (bg_diag_.cycle_count % 500 == 0) {
-      RCLCPP_INFO(LOGGER,
-        "[usb_thread] pos(deg)=[%.1f %.1f %.1f %.1f %.1f %.1f] "
-        "cmd=[%.3f %.3f %.3f %.3f %.3f %.3f] "
-        "mode=%s cycle=%.1fms n=%" PRIu64 " slow=%" PRIu64,
-        rp[0], rp[1], rp[2], rp[3], rp[4], rp[5],
-        local_pos_cmds[0], local_pos_cmds[1], local_pos_cmds[2],
-        local_pos_cmds[3], local_pos_cmds[4], local_pos_cmds[5],
-        local_pos_active ? "POS" : (local_vel_active ? "VEL" : "IDLE"),
-        ms_cycle, bg_diag_.cycle_count, bg_diag_.slow_cycles);
-    }
+    // // Periodic state log from the USB thread (~every 5 s).
+    // if (bg_diag_.cycle_count % 500 == 0) {
+    //   RCLCPP_INFO(LOGGER,
+    //     "[usb_thread] pos(deg)=[%.1f %.1f %.1f %.1f %.1f %.1f] "
+    //     "cmd=[%.3f %.3f %.3f %.3f %.3f %.3f] "
+    //     "mode=%s cycle=%.1fms n=%" PRIu64 " slow=%" PRIu64,
+    //     rp[0], rp[1], rp[2], rp[3], rp[4], rp[5],
+    //     local_pos_cmds[0], local_pos_cmds[1], local_pos_cmds[2],
+    //     local_pos_cmds[3], local_pos_cmds[4], local_pos_cmds[5],
+    //     local_pos_active ? "POS" : (local_vel_active ? "VEL" : "IDLE"),
+    //     ms_cycle, bg_diag_.cycle_count, bg_diag_.slow_cycles);
+    // }
 
     // Target ~100 Hz.  Sleep if we finished early.
     static constexpr auto TARGET_PERIOD = std::chrono::milliseconds(10);
