@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<root BTCPP_format="4" main_tree_to_execute="plan_path_along_surface">
+<root BTCPP_format="4" main_tree_to_execute="SinterPathAlongSurface">
+  <!-- ////////// -->
   <BehaviorTree
-    ID="plan_path_along_surface"
-    _description="Plan path from scan at position -&gt; scan_initial"
+    ID="SinterPathAlongSurface"
+    _description="Combine the plan path along surface and track blob to sinter a path along a 3D pointcloud contour"
     _favorite="false"
   >
-    <Control ID="Sequence" name="TopLevelSequence">
+    Control ID="Sequence" name="TopLevelSequence">
       <SubTree
         ID="Move to Waypoint"
         _collapsed="true"
@@ -27,7 +28,7 @@
       <Action
         ID="CreateStampedPose"
         stamped_pose="{crop_pose}"
-        position_xyz="0;-1.0;0;"
+        position_xyz="0;-1.1;0;"
         orientation_xyzw="-1.000; 0.000; -0.000; 0.000"
       />
       <Action
@@ -65,13 +66,29 @@
         slice_distance_from_plane="0.5"
         hull_alpha="-1.0"
       />
-      <Control ID="Sequence">
-        <SubTree
-          ID="Move to Waypoint"
-          _collapsed="true"
-          waypoint_name="Sun_Scan"
+      <Control ID="Sequence" name="move to home, find sun orientation">
+        <SubTree ID="Move to Waypoint" waypoint_name="Sun_Scan" />
+        <SubTree ID="TrackBlob" _collapsed="true" />
+        <Action
+          ID="CreateStampedPose"
+          reference_frame="j2n6s300_focal_point"
+          stamped_pose="{sun_pose}"
+          orientation_xyzw="0.000; -1.000; 0.000; 0.000"
         />
-        <SubTree ID="GetSunOrientation" _collapsed="true" />
+      </Control>
+      <Control ID="Sequence" _collapsed="false">
+        <Action
+          ID="UnpackPoseStampedMessage"
+          pose_stamped="{sun_pose}"
+          pose="{cropped_pose}"
+          header="{sun_header}"
+        />
+        <Action
+          ID="UnpackPoseMessage"
+          pose="{cropped_pose}"
+          orientation="{sun_orientation}"
+          position="{dummy_position}"
+        />
       </Control>
       <Decorator
         ID="ForEach"
@@ -109,9 +126,7 @@
             element="{pct_pose_final}"
             input_vector="{contour_path}"
             output_vector="{contour_path}"
-            index="{index}"
           />
-          <Action ID="VisualizePose" pose="{pct_pose_final}" />
         </Control>
       </Decorator>
       <Action ID="VisualizePath" path="{contour_path}" show_poses="true" />
@@ -146,7 +161,7 @@
             path="{contour_path}"
             tip_links="j2n6s300_focal_point"
             position_only="false"
-            velocity_scale_factor="0.005"
+            velocity_scale_factor="0.25"
             joint_trajectory_msg="{sinter_trajectory}"
           />
         </Decorator>
@@ -157,8 +172,14 @@
       </Control>
       <SubTree ID="Move to Waypoint" waypoint_name="Scan_Initial" />
     </Control>
+
   </BehaviorTree>
   <TreeNodesModel>
-    <SubTree ID="plan_path_along_surface" />
+    <SubTree ID="SinterPathAlongSurface">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
   </TreeNodesModel>
 </root>

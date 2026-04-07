@@ -187,3 +187,79 @@
     twist: []
     wrench: []
   name: Scan_Initial
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.6009443755990294
+    - 4.164370881803127
+    - 3.0166861374073326
+    - -8.391870266191874e-05
+    - -5.476430578807547e-05
+    - -3.12420380956823
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Sun_Scan
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - 1.5706898003512944
+    - 2.357883466955673
+    - 1.575903071343178
+    - 0.785185110510242
+    - -1.2783173231945e-05
+    - 2.3584379370946276
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: pointfollowing_init

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="GetSunOrientation">
+  <BehaviorTree
+    ID="GetSunOrientation"
+    _description="Captures a camera image, detects the sun blob, and outputs the camera-to-sun orientation quaternion as {sun_orientation}. Does not move the robot."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="GetImage" topic_name="/camera/image_raw" />
+      <Action ID="GetCameraInfo" topic_name="/camera/camera_info" />
+      <Action
+        ID="SunPoseFinder"
+        image="{image}"
+        camera_info="{camera_info}"
+        cameraOrientation="{sun_orientation}"
+        output_image="{sun_debug_image}"
+      />
+      <Action
+        ID="SaveImageToFile"
+        image="{sun_debug_image}"
+        file_path="/tmp/trackblob"
+        file_prefix="sun_orientation"
+      />
+      <Control ID="Sequence" name="Create Quaternion Vector">
+        <Action ID="UnpackQuaternionMessage" quaternion="{sun_orientation}" />
+        <SubTree
+          ID="CreateVector"
+          _collapsed="true"
+          vector="{quaternion_adjust}"
+        />
+        <SubTree
+          ID="AddToVector"
+          _collapsed="true"
+          element="{x}"
+          input_vector="{quaternion_adjust}"
+          output_vector="{quaternion_adjust}"
+        />
+        <SubTree
+          ID="AddToVector"
+          element="{y}"
+          input_vector="{quaternion_adjust}"
+          output_vector="{quaternion_adjust}"
+        />
+        <SubTree
+          ID="AddToVector"
+          element="{z}"
+          input_vector="{quaternion_adjust}"
+          output_vector="{quaternion_adjust}"
+        />
+        <SubTree
+          ID="AddToVector"
+          element="{w}"
+          input_vector="{quaternion_adjust}"
+          output_vector="{quaternion_adjust}"
+        />
+      </Control>
+      <Action
+        ID="CreateStampedPose"
+        reference_frame="j2n6s300_suncam_optical"
+        stamped_pose="{camera_pose}"
+      />
+      <Action
+        ID="TransformPose"
+        quaternion_xyzw="{quaternion_adjust}"
+        output_pose="{camera_pose_rotated}"
+        input_pose="{camera_pose}"
+      />
+      <Action
+        ID="TransformPoseFrame"
+        input_pose="{camera_pose_rotated}"
+        output_pose="{world_frame_rotated}"
+        target_frame_id="world"
+      />
+      <Control ID="Sequence" name="Unpack Rotated Quaterntion">
+        <Action
+          ID="UnpackPoseStampedMessage"
+          pose="{target_pose_unpacked}"
+          pose_stamped="{world_frame_rotated}"
+        />
+        <Action
+          ID="UnpackPoseMessage"
+          orientation="{sun_orientation}"
+          pose="{target_pose_unpacked}"
+        />
+      </Control>
+      <Action
+        ID="VisualizePose"
+        marker_name="sun_orientation"
+        pose="{world_frame_rotated}"
+      />
+      <SubTree
+        ID="Visualize TF"
+        _collapsed="true"
+        marker_name="focal"
+        tf_frame_name="j2n6s300_focal_point"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="GetSunOrientation">
+      <MetadataFields>
+        <Metadata runnable="false" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+      <output_ports>
+        <inout_port
+          name="sun_orientation"
+          type="geometry_msgs::msg::Quaternion"
+        >
+          Sun direction orientation expressed in the j2n6s300_focal_point frame
+        </inout_port>
+      </output_ports>
+      <inout_port
+        name="sun_orientation"
+        default="{sun_orientation}"
+        type="geometry_msgs::msg::Quaternion"
+      >
+        orientation to the sun in the focal_point_frame
+      </inout_port>
+    </SubTree>
+  </TreeNodesModel>
+</root>

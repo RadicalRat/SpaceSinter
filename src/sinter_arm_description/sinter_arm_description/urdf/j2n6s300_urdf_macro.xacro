@@ -313,7 +313,7 @@
     <joint name="${prefix}_focal_point_joint" type="fixed">
       <parent link="${prefix}_lens"/>
       <child link="${prefix}_focal_point"/>
-      <origin xyz="0 0 0.4" rpy="0 0 0"/>
+      <origin xyz="0 0 0.4" rpy="${PI} 0 0"/>
     </joint>
 
     <!-- ========================================== -->

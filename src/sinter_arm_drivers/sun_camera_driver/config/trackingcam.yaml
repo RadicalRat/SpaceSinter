@@ -1,22 +1,57 @@
-image_width: 640
-image_height: 480
-camera_name: "C_______________ducam_16MP___SB__PCI0_XHC__RHUB_HS04_4_1_0_0c45_636d_3840x2160"
+image_width: 1600
+image_height: 1200
+camera_name: "Arducam_16MP_Arducam_16MP___SB__PCI0_XHC__RHUB_HS04_4_1_0_0c45_636d_1600x1200"
 # NOTE: Placeholder values only — calibrate with kalibr or camera_calibration before use.
 camera_matrix:
   rows: 3
   cols: 3
-  data: [1000.0, 0.0, 1920.0, 0.0, 1000.0, 1080.0, 0.0, 0.0, 1.0]
-distortion_model: "equidistant"
-# equidistant (Kannala-Brandt) uses 4 coefficients: k1, k2, k3, k4
+  data:
+  - 850.2828652928052
+  - 0.0
+  - 813.3671999437513
+  - 0.0
+  - 859.2064940687557
+  - 636.3533219366299
+  - 0.0
+  - 0.0
+  - 1.0
+distortion_model: plumb_bob
 distortion_coefficients:
   rows: 1
-  cols: 4
-  data: [0.0, 0.0, 0.0, 0.0]
+  cols: 5
+  data:
+  - -0.3011702354695467
+  - 0.09206537771142209
+  - 0.0035516772650394826
+  - 1.0837743063234605e-05
+  - 0.08193846443139685
 rectification_matrix:
   rows: 3
   cols: 3
-  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  data:
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
 projection_matrix:
   rows: 3
   cols: 4
-  data: [1000.0, 0.0, 1920.0, 0.0, 0.0, 1000.0, 1080.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+  data:
+  - 850.2828652928052
+  - 0.0
+  - 813.3671999437513
+  - 0.0
+  - 0.0
+  - 859.2064940687557
+  - 636.3533219366299
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+  - 0.0
+

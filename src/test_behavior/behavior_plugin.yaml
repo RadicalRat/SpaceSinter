@@ -1,0 +1,4 @@
+objectives:
+  behavior_loader_plugins:
+    test_behavior:
+      - "test_behavior::TestBehaviorBehaviorsLoader"
