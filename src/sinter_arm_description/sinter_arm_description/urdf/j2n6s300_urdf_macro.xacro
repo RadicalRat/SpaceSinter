@@ -300,7 +300,7 @@
     <joint name="${prefix}_lens_joint" type="fixed">
       <parent link="${prefix}_link_6"/>
       <child link="${prefix}_lens"/>
-      <origin xyz="-0.00827 0 -0.27602" rpy="${-PI/2} 0 ${-PI/2}"/>
+      <origin xyz="-0.00827 0 -0.27602" rpy="${-PI/2} 0 0"/>
     </joint>
 
     <!-- ========================================== -->
@@ -326,7 +326,7 @@
     <joint name="${prefix}_suncam_joint" type="fixed">
       <parent link="${prefix}_lens"/>
       <child link="${prefix}_suncam_optical"/>
-      <origin xyz="0.065 -0.203 -0.03567" rpy="${PI} 0 0"/>
+      <origin xyz="0.065 -0.20452 -0.04178" rpy="${PI} 0 0"/>
     </joint>
 
 
@@ -340,7 +340,7 @@
     <joint name="${prefix}_realsense_joint" type="fixed">
       <parent link="${prefix}_lens"/>
       <child link="realsense_${prefix}"/>
-      <origin xyz="-0.065 -0.203 -0.03567" rpy="${-PI/2} 0 ${PI}"/>
+      <origin xyz="-0.12645 -0.24618 -0.01158" rpy="${-PI/2} 0 ${PI}"/>
     </joint>
 
 
