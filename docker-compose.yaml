@@ -17,6 +17,8 @@ services:
       - /dev:/dev
       # Allow libcamera to enumerate cameras via udev
       - /run/udev:/run/udev:ro
+      # Share saved inspection images with the host
+      - /tmp/trackblob:/tmp/trackblob
 
 
   # Starts the robot drivers.
