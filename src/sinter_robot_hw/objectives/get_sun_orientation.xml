@@ -20,6 +20,7 @@
         image="{sun_debug_image}"
         file_path="/tmp/trackblob"
         file_prefix="sun_orientation"
+        _skipIf="true"
       />
       <Control ID="Sequence" name="Create Quaternion Vector">
         <Action ID="UnpackQuaternionMessage" quaternion="{sun_orientation}" />

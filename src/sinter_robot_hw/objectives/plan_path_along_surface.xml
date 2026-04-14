@@ -27,7 +27,7 @@
       <Action
         ID="CreateStampedPose"
         stamped_pose="{crop_pose}"
-        position_xyz="0;-1.0;0;"
+        position_xyz="0;-1.0;0.4;"
         orientation_xyzw="-1.000; 0.000; -0.000; 0.000"
       />
       <Action
@@ -35,7 +35,7 @@
         point_cloud_cropped="{point_cloud_cropped}"
         point_cloud="{point_cloud_scan}"
         crop_box_centroid_pose="{crop_pose}"
-        crop_box_size="0.35;0.05;1;"
+        crop_box_size="0.35;0.05;0.4;"
       />
       <Action ID="SendPointCloudToUI" point_cloud="{point_cloud_cropped}" />
       <Action
@@ -70,7 +70,11 @@
           ID="Move to Waypoint"
           _collapsed="true"
           waypoint_name="Sun_Scan"
+          joint_group_name="manipulator"
         />
+        <Decorator ID="Repeat" num_cycles="2">
+          <SubTree ID="TrackBlob" _collapsed="true" />
+        </Decorator>
         <SubTree ID="GetSunOrientation" _collapsed="true" />
       </Control>
       <Decorator
@@ -128,7 +132,19 @@
           output_pose="{first_pose}"
           translation_xyz="0.01;-0.01;0;"
         />
+        <Action
+          ID="TransformPose"
+          translation_xyz="0;0;0"
+          input_pose="{first_pose}"
+          output_pose="{first_pose}"
+        />
         <Action ID="VisualizePose" marker_name="leadin" pose="{first_pose}" />
+        <SubTree
+          ID="Move to Waypoint"
+          waypoint_name="BeforeSinter"
+          velocity_scale_factor="0.5"
+          _skipIf="true"
+        />
         <SubTree
           ID="Move to Pose"
           _collapsed="true"

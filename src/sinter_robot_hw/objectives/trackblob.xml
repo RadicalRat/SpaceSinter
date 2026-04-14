@@ -13,6 +13,7 @@
         image="{image}"
         file_prefix="image_before"
         file_path="/tmp/trackblob"
+        _skipIf="true"
       />
       <Action
         ID="SunPoseFinder"
@@ -26,6 +27,7 @@
         image="{out_image}"
         file_path="/tmp/trackblob"
         file_prefix="image_after"
+        _skipIf="true"
       />
       <Action
         ID="CreateStampedPose"
@@ -141,11 +143,10 @@
         target_pose="{target_pose}"
         ik_frame="j2n6s300_focal_point"
         require_user_approval="false"
-        velocity_scale_factor="1"
-        _skipIf="true"
+        velocity_scale_factor="0.25"
         controller_names="joint_trajectory_admittance_controller"
       />
-      <Control ID="Sequence">
+      <Control ID="Sequence" _skipIf="true">
         <Action
           ID="InitializeMTCTask"
           controller_names="joint_trajectory_admittance_controller"
@@ -167,6 +168,7 @@
           keep_orientation_link_names="j2n6s300_focal_point"
           link_padding="0.001"
           max_iterations="10000"
+          target_pose="{target_pose}"
         />
         <Action ID="PlanMTCTask" />
         <Action ID="ExecuteMTCSolution" goal_position_tolerance="0.005" />
