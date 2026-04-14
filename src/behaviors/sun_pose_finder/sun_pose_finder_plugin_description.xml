@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<library path="sun_pose_finder">
-  <class
-    type="sun_pose_finder::SunPoseFinderBehaviorsLoader"
-    base_class_type="moveit_pro::behaviors::SharedResourcesNodeLoaderBase"
-  />
-</library>

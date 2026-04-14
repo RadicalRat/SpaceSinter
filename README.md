@@ -1,1 +1,0 @@
-# MoveIt Pro Fanuc Config

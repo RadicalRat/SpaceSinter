@@ -1,4 +1,0 @@
-objectives:
-  behavior_loader_plugins:
-    sun_pose_finder:
-      - "sun_pose_finder::SunPoseFinderBehaviorsLoader"
