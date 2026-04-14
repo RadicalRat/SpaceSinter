@@ -1,14 +1,20 @@
-enable_color: true
-rgb_camera.color_profile: 1920x1080x15
+enable_color: false
 enable_depth: true
-align_depth.enable: true
+align_depth.enable: false
+enable_rgbd: false
 pointcloud.enable: true
+pointcloud.stream_filter: 0
+pointcloud.stream_index_filter: 0
+pointcloud.allow_no_texture_points: true
 enable_sync: true
 publish_tf: true
 tf_publish_rate: 5.0
 depth_module.depth_profile: 1280x720x30
-# spatial_filter.enable: true
-# temporal_filter.enable: true
+spatial_filter.enable: true
+temporal_filter.enable: true
 base_frame_id: j2n6s300
 camera_name: realsense
 camera_namespace: realsense
+initial_reset: true
+wait_for_device_timeout: 10.0
+reconnect_timeout: 6.0
