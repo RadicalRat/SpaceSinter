@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="SinterContinuous">
+  <BehaviorTree
+    ID="SinterContinuous"
+    _description="Plan path from scan at position -&gt; scan_initial"
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+      />
+      <SubTree ID="Clear Snapshot" _collapsed="true" />
+      <!--Get Point cloud scan and crop. Send to UI-->
+      <Action ID="WaitForDuration" delay_duration="1.00" />
+      <Action
+        ID="GetPointCloud"
+        message_out="{point_cloud_scan}"
+        topic_name="/camera/camera/depth/color/points"
+        publisher_timeout_sec="5.000000"
+      />
+      <Action
+        ID="TransformPointCloudFrame"
+        input_cloud="{point_cloud_scan}"
+        output_cloud="{point_cloud_scan}"
+      />
+      <Action
+        ID="CreateStampedPose"
+        stamped_pose="{crop_pose}"
+        position_xyz="0;0;0.75"
+        orientation_xyzw="0.000; 0.000; 0.000; 1.000"
+        reference_frame="realsense_depth_optical_frame"
+      />
+      <Action ID="VisualizePose" pose="{crop_pose}" />
+      <Action
+        ID="CropPointsInBox"
+        point_cloud_cropped="{point_cloud_cropped}"
+        point_cloud="{point_cloud_scan}"
+        crop_box_centroid_pose="{crop_pose}"
+        crop_box_size="0.05;0.05;0.5;"
+      />
+      <Action ID="SendPointCloudToUI" point_cloud="{point_cloud_cropped}" />
+      <Action
+        ID="GetCentroidFromPointCloud"
+        point_cloud="{point_cloud_cropped}"
+        output_pose="{centroid_pose}"
+      />
+      <Action
+        ID="TransformPose"
+        input_pose="{centroid_pose}"
+        output_pose="{centroid_pose}"
+        quaternion_xyzw="0.000; 0.000; 0.000; 1.000"
+        translation_xyz="-0.025;-0.05;-0.25;"
+      />
+      <Action
+        ID="VisualizePose"
+        pose="{centroid_pose}"
+        marker_name="centroid"
+      />
+      <Action
+        ID="GetContourFromPointCloudSlice"
+        contour_crop_angle_span="3.1415"
+        contour_crop_angle_start="3.1415"
+        contour_path="{contour_path}"
+        input_cloud="{point_cloud_cropped}"
+        max_pose_spacing="0.005"
+        slice_plane="{centroid_pose}"
+        slice_distance_from_plane="0.5"
+        hull_alpha="-1.0"
+        _skipIf="true"
+      />
+      <Action
+        ID="GenerateCoveragePath"
+        bottom_right_corner="{centroid_pose}"
+        width="0.05"
+        height="0.05"
+        stride_distance="0.002"
+        vector_of_poses="{contour_path}"
+      />
+      <Control ID="Sequence">
+        <SubTree
+          ID="Move to Waypoint"
+          _collapsed="true"
+          waypoint_name="Sun_Scan"
+          joint_group_name="manipulator"
+        />
+        <Decorator ID="Repeat" num_cycles="2">
+          <SubTree ID="TrackBlob" _collapsed="true" />
+        </Decorator>
+      </Control>
+      <Control ID="Sequence">
+        <SubTree ID="GetSunOrientation" />
+        <Action
+          ID="GetElementOfVector"
+          element="{first}"
+          index="0"
+          vector_in="{contour_path}"
+        />
+        <Action
+          ID="UnpackPoseStampedMessage"
+          pose_stamped="{first}"
+          pose="{pct_pose}"
+          header="{pct_header}"
+        />
+        <Action
+          ID="UnpackPoseMessage"
+          pose="{pct_pose}"
+          orientation="{pct_orientation}"
+          position="{pct_position}"
+        />
+        <Action
+          ID="CreatePoseMessage"
+          position="{pct_position}"
+          orientation="{sun_orientation}"
+          pose="{pct_pose_rotated}"
+        />
+        <Action
+          ID="CreatePoseStampedMessage"
+          pose="{pct_pose_rotated}"
+          header="{pct_header}"
+          pose_stamped="{pct_pose_final}"
+        />
+        <Action
+          ID="TransformPose"
+          input_pose="{pct_pose_final}"
+          translation_xyz="0;0;-0.192"
+          output_pose="{pct_pose_final}"
+          quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
+          name="Sinter Fine Tuning"
+        />
+        <SubTree
+          ID="Move to Pose"
+          velocity_scale_factor="1"
+          target_pose="{pct_pose_final}"
+          ik_frame="j2n6s300_focal_point"
+        />
+      </Control>
+      <Decorator
+        ID="ForEach"
+        vector_in="{contour_path}"
+        index="{index}"
+        out="{out}"
+      >
+        <Control ID="Sequence">
+          <SubTree ID="GetSunOrientation" _collapsed="true" />
+          <Action
+            ID="UnpackPoseStampedMessage"
+            pose_stamped="{out}"
+            pose="{pct_pose}"
+            header="{pct_header}"
+          />
+          <Action
+            ID="UnpackPoseMessage"
+            pose="{pct_pose}"
+            orientation="{pct_orientation}"
+            position="{pct_position}"
+          />
+          <Action
+            ID="CreatePoseMessage"
+            position="{pct_position}"
+            orientation="{sun_orientation}"
+            pose="{pct_pose_rotated}"
+          />
+          <Action
+            ID="CreatePoseStampedMessage"
+            pose="{pct_pose_rotated}"
+            header="{pct_header}"
+            pose_stamped="{pct_pose_final}"
+          />
+          <Action
+            ID="TransformPose"
+            input_pose="{pct_pose_final}"
+            translation_xyz="0;0;-0.250"
+            output_pose="{pct_pose_final}"
+            quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
+            name="Sinter Fine Tuning"
+          />
+          <Action
+            ID="ReplaceInVector"
+            element="{pct_pose_final}"
+            input_vector="{contour_path}"
+            output_vector="{contour_path}"
+            index="{index}"
+            _skipIf="true"
+          />
+          <Action ID="VisualizePose" pose="{pct_pose_final}" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            velocity_scale_factor="0.0015"
+            target_pose="{pct_pose_final}"
+            ik_frame="j2n6s300_focal_point"
+          />
+        </Control>
+      </Decorator>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="SinterContinuous" />
+  </TreeNodesModel>
+</root>
