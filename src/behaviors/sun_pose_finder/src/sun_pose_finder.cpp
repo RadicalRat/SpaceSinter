@@ -149,7 +149,7 @@ BT::NodeStatus SunPoseFinder::tick()
 
     tf2::Quaternion camera_transform;
 
-    camera_transform.setRPY(-vy, vx, 0);  // roll corrects vertical (vy), pitch corrects horizontal (vx)
+    camera_transform.setRPY(vy, -vx, 0);  // roll corrects vertical (vy), pitch corrects horizontal (vx)
     camera_transform.normalize();
     geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(camera_transform);
 

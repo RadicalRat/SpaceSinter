@@ -37,6 +37,120 @@
     wrench: []
   name: BeforeSinter
 - description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.585141177690499
+    - 1.9554252314423537
+    - 2.584742713885201
+    - 0.00011677701305672257
+    - 0.00016582338974946507
+    - 4.900216405800961e-05
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Demo_SCAN
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.4830744636487765
+    - 1.7223709391850834
+    - 2.2682483888824403
+    - 0.2727971778367407
+    - -1.200499223553701
+    - 2.0071878951277333
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: EXPOSCAN
+- description: ''
+  favorite: false
+  joint_group_names:
+  - lens
+  - manipulator
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - j2n6s300_joint_1
+    - j2n6s300_joint_2
+    - j2n6s300_joint_3
+    - j2n6s300_joint_4
+    - j2n6s300_joint_5
+    - j2n6s300_joint_6
+    position:
+    - -1.570707909846706
+    - 1.5707811467766832
+    - 3.141276003736183
+    - 1.6032215114891017
+    - -0.045163154928270714
+    - -1.531990074970807
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: EXPO_UP
+- description: ''
   favorite: true
   joint_group_names:
   - manipulator
@@ -93,126 +207,12 @@
     - j2n6s300_joint_5
     - j2n6s300_joint_6
     position:
-    - -1.5708441305364635
-    - 4.138845814335263
-    - 3.0167045132188544
-    - -0.9075337270447085
-    - -0.06992997466070838
-    - -2.3504005169247684
-    velocity: []
-  multi_dof_joint_state:
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    joint_names: []
-    transforms: []
-    twist: []
-    wrench: []
-  name: Out
-- description: Position for a pointcloud scan
-  favorite: false
-  joint_group_names:
-  - lens
-  - manipulator
-  joint_state:
-    effort: []
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    name:
-    - j2n6s300_joint_1
-    - j2n6s300_joint_2
-    - j2n6s300_joint_3
-    - j2n6s300_joint_4
-    - j2n6s300_joint_5
-    - j2n6s300_joint_6
-    position:
-    - -1.6011387863586055
-    - 4.580248786049356
-    - 3.728366137618625
-    - -0.16982735257985832
-    - 0.8376685587446513
-    - 1.3146992995218247
-    velocity: []
-  multi_dof_joint_state:
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    joint_names: []
-    transforms: []
-    twist: []
-    wrench: []
-  name: PCScan
-- description: ''
-  favorite: false
-  joint_group_names:
-  - lens
-  - manipulator
-  joint_state:
-    effort: []
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    name:
-    - j2n6s300_joint_1
-    - j2n6s300_joint_2
-    - j2n6s300_joint_3
-    - j2n6s300_joint_4
-    - j2n6s300_joint_5
-    - j2n6s300_joint_6
-    position:
-    - -1.7241098502188508
-    - 3.9380868776690567
-    - 0.9622252021389027
-    - 0.5754903362804383
-    - -2.1109362622397865
-    - -2.3929157531990115
-    velocity: []
-  multi_dof_joint_state:
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    joint_names: []
-    transforms: []
-    twist: []
-    wrench: []
-  name: Pre-Path
-- description: ''
-  favorite: false
-  joint_group_names:
-  - lens
-  - manipulator
-  joint_state:
-    effort: []
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    name:
-    - j2n6s300_joint_1
-    - j2n6s300_joint_2
-    - j2n6s300_joint_3
-    - j2n6s300_joint_4
-    - j2n6s300_joint_5
-    - j2n6s300_joint_6
-    position:
-    - -1.5709284195849644
-    - 3.648614316666785
-    - 2.933442113318072
-    - -3.941478413338473e-05
-    - -0.00020109649025377922
-    - -0.00014609935292606572
+    - -1.511476544042253
+    - 1.988662946585142
+    - 1.6638204105133099
+    - 1.603173974063644
+    - -0.04518052789319427
+    - -1.5320420066120635
     velocity: []
   multi_dof_joint_state:
     header:
@@ -245,12 +245,12 @@
     - j2n6s300_joint_5
     - j2n6s300_joint_6
     position:
-    - -1.7886977650818334
-    - 4.070061956016805
-    - 3.6310590250770916
-    - 0.22946914479780567
-    - 0.5500213616430336
-    - 1.486326582813927
+    - -1.5104517596547913
+    - 1.988039101099791
+    - 1.395419845320181
+    - 1.601750780777106
+    - -0.0446052850977372
+    - 9.906959255090442e-05
     velocity: []
   multi_dof_joint_state:
     header:
@@ -263,41 +263,3 @@
     twist: []
     wrench: []
   name: Sun_Scan
-- description: ''
-  favorite: false
-  joint_group_names:
-  - lens
-  - manipulator
-  joint_state:
-    effort: []
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    name:
-    - j2n6s300_joint_1
-    - j2n6s300_joint_2
-    - j2n6s300_joint_3
-    - j2n6s300_joint_4
-    - j2n6s300_joint_5
-    - j2n6s300_joint_6
-    position:
-    - 1.5706898003512944
-    - 2.357883466955673
-    - 1.575903071343178
-    - 0.785185110510242
-    - -1.2783173231945e-05
-    - 2.3584379370946276
-    velocity: []
-  multi_dof_joint_state:
-    header:
-      frame_id: ''
-      stamp:
-        nanosec: 0
-        sec: 0
-    joint_names: []
-    transforms: []
-    twist: []
-    wrench: []
-  name: pointfollowing_init

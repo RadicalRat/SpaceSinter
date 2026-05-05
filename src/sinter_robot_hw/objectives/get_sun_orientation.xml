@@ -99,24 +99,12 @@
   </BehaviorTree>
   <TreeNodesModel>
     <SubTree ID="GetSunOrientation">
-      <MetadataFields>
-        <Metadata runnable="false" />
-        <Metadata subcategory="Sinter" />
-      </MetadataFields>
-      <output_ports>
-        <inout_port
-          name="sun_orientation"
-          type="geometry_msgs::msg::Quaternion"
-        >
-          Sun direction orientation expressed in the j2n6s300_focal_point frame
-        </inout_port>
-      </output_ports>
       <inout_port
         name="sun_orientation"
         default="{sun_orientation}"
         type="geometry_msgs::msg::Quaternion"
       >
-        orientation to the sun in the focal_point_frame
+        outputs a quaternion of the sun orientation
       </inout_port>
     </SubTree>
   </TreeNodesModel>

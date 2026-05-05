@@ -2,7 +2,13 @@
 <root BTCPP_format="4" main_tree_to_execute="Visualize Point Cloud">
   <BehaviorTree ID="Visualize Point Cloud" _description="" _favorite="false">
     <Control ID="Sequence" name="TopLevelSequence">
-      <SubTree ID="Move to Waypoint" _collapsed="true" waypoint_name="PCScan" />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        _skipIf="true"
+      />
+      <SubTree ID="Clear Snapshot" _collapsed="true" />
       <Action ID="WaitForDuration" delay_duration="2.000" />
       <Action
         ID="GetPointCloud"
@@ -10,18 +16,19 @@
         message_timeout_sec="5.000000"
         message_out="{input_cloud}"
       />
-      <Action ID="TransformPointCloudFrame" />
+      <Action ID="TransformPointCloudFrame" target_frame="world" />
       <Action
         ID="CreateStampedPose"
-        position_xyz="0.0;-0.75;0;"
         stamped_pose="{roi_frame}"
-        orientation_xyzw="-1.000; 0.000; -0.000; 0.000"
+        orientation_xyzw="0.000; 0.000; 0.000; 1.000"
+        reference_frame="realsense_depth_optical_frame"
+        position_xyz="0;0;0.5;"
       />
       <Action ID="VisualizePose" pose="{roi_frame}" />
       <Action
         ID="CropPointsInBox"
         crop_box_centroid_pose="{roi_frame}"
-        crop_box_size="0.4;0.2;1"
+        crop_box_size="0.25;0.25;1"
         point_cloud="{output_cloud}"
       />
       <Action

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="EXPODEMO">
+  <!--//////////-->
+  <BehaviorTree ID="EXPODEMO" _description="" _favorite="false">
+    <Decorator ID="Repeat" num_cycles="30">
+      <Control ID="Sequence" name="TopLevelSequence">
+        <SubTree
+          ID="Move to Waypoint"
+          _collapsed="true"
+          waypoint_name="EXPO_UP"
+        />
+        <Action ID="WaitForDuration" delay_duration="3.0" />
+        <Action ID="AlwaysSuccess" />
+        <SubTree
+          ID="Visualize TF"
+          _collapsed="true"
+          tf_frame_name="j2n6s300_focal_point"
+          marker_name="focal"
+        />
+        <Action
+          ID="CreateStampedPose"
+          reference_frame="j2n6s300_focal_point"
+          position_xyz="-0.375;0.125;0;"
+        />
+        <Action
+          ID="VisualizePose"
+          pose="{pose_stamped}"
+          marker_text="newpose"
+          marker_name="pose"
+        />
+        <Action
+          ID="CreateStampedPose"
+          reference_frame="j2n6s300_focal_point"
+          position_xyz="0;0.25;0;"
+          stamped_pose="{pose_stamped_2}"
+          orientation_xyzw="0.000; 0.000; -0.707; 0.707"
+        />
+        <Action
+          ID="VisualizePose"
+          pose="{pose_stamped_2}"
+          marker_text="marker2"
+          marker_name="pose2"
+        />
+        <SubTree
+          ID="Move to Pose"
+          _collapsed="true"
+          ik_frame="j2n6s300_focal_point"
+          link_padding="0.01"
+          planning_group_name="manipulator"
+          target_pose="{pose_stamped}"
+        />
+        <Action ID="WaitForDuration" delay_duration="3.0" />
+        <SubTree
+          ID="Move to Pose"
+          ik_frame="j2n6s300_focal_point"
+          link_padding="0.01"
+          planning_group_name="manipulator"
+          target_pose="{pose_stamped_2}"
+        />
+        <Action ID="WaitForDuration" delay_duration="3.00" />
+      </Control>
+    </Decorator>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="EXPODEMO">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

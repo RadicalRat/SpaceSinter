@@ -15,6 +15,9 @@
   <xacro:include filename="$(find sinter_arm_description)/urdf/j2n6s300_urdf_macro.xacro"/>
 
   <link name="world"/>
+  <!-- <link name="world_rotated"/> -->
+
+
 
   <xacro:j2n6s300_description base_parent="world"/>
 

@@ -10,5 +10,8 @@ def generate_launch_description():
     # config_path = PathJoinSubstitution([camera_pkg, "config", "trackingcam.yaml"])
 
     # --- Nodes ---
+    # node_params = ["0", "0", "0", "1.5708", "0", "0", "world", "rotated_world"]
+    # static_transform_publisher_node = Node(package="tf2_ros", executable="static_transform_publisher", arguments=node_params)
+
 
     return LaunchDescription([])

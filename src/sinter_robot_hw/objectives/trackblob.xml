@@ -12,8 +12,7 @@
         ID="SaveImageToFile"
         image="{image}"
         file_prefix="image_before"
-        file_path="/tmp/trackblob"
-        _skipIf="true"
+        file_path="."
       />
       <Action
         ID="SunPoseFinder"
@@ -25,9 +24,8 @@
       <Action
         ID="SaveImageToFile"
         image="{out_image}"
-        file_path="/tmp/trackblob"
+        file_path="."
         file_prefix="image_after"
-        _skipIf="true"
       />
       <Action
         ID="CreateStampedPose"
@@ -127,6 +125,8 @@
             ID="TransformPose"
             input_pose="{target_pose}"
             output_pose="{target_pose}"
+            translation_xyz="0;0;0.05"
+            _skipIf="true"
           />
         </Control>
       </Control>

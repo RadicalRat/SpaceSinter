@@ -16,6 +16,10 @@
 
   <link name="world"/>
 
+  <!-- <link name="world_rotated"/> -->
+
+
+
   <xacro:j2n6s300_description base_parent="world"/>
 
    <!-- Mock arm hardware -->

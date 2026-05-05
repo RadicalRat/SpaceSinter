@@ -29,7 +29,7 @@
         ID="CreateStampedPose"
         stamped_pose="{crop_pose}"
         position_xyz="0;0;0.75"
-        orientation_xyzw="0.000; 0.000; 0.000; 1.000"
+        orientation_xyzw="1.000; 0.000; 0.000; 0.000"
         reference_frame="realsense_depth_optical_frame"
       />
       <Action ID="VisualizePose" pose="{crop_pose}" />
@@ -39,6 +39,14 @@
         point_cloud="{point_cloud_scan}"
         crop_box_centroid_pose="{crop_pose}"
         crop_box_size="0.05;0.05;0.5;"
+        _skipIf="true"
+      />
+      <Action
+        ID="CropPointsInBox"
+        point_cloud_cropped="{point_cloud_cropped}"
+        point_cloud="{point_cloud_scan}"
+        crop_box_centroid_pose="{crop_pose}"
+        crop_box_size="0.05;0.05;2;"
       />
       <Action ID="SendPointCloudToUI" point_cloud="{point_cloud_cropped}" />
       <Action
@@ -51,7 +59,7 @@
         input_pose="{centroid_pose}"
         output_pose="{centroid_pose}"
         quaternion_xyzw="0.000; 0.000; 0.000; 1.000"
-        translation_xyz="-0.025;-0.05;-0.25;"
+        translation_xyz="0;0;0;"
       />
       <Action
         ID="VisualizePose"
@@ -73,9 +81,9 @@
       <Action
         ID="GenerateCoveragePath"
         bottom_right_corner="{centroid_pose}"
-        width="0.05"
-        height="0.05"
-        stride_distance="0.002"
+        width="0.01"
+        height="0.01"
+        stride_distance="0.0015"
         vector_of_poses="{contour_path}"
       />
       <Control ID="Sequence">
@@ -90,7 +98,7 @@
         </Decorator>
       </Control>
       <Control ID="Sequence">
-        <SubTree ID="GetSunOrientation" />
+        <SubTree ID="GetSunOrientation" _collapsed="true" />
         <Action
           ID="GetElementOfVector"
           element="{first}"
@@ -124,11 +132,12 @@
         <Action
           ID="TransformPose"
           input_pose="{pct_pose_final}"
-          translation_xyz="0;0;-0.192"
+          translation_xyz="0;0;-0.03;"
           output_pose="{pct_pose_final}"
           quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
           name="Sinter Fine Tuning"
         />
+        <Action ID="VisualizePose" pose="{pct_pose_final}" />
         <SubTree
           ID="Move to Pose"
           velocity_scale_factor="1"
@@ -171,7 +180,7 @@
           <Action
             ID="TransformPose"
             input_pose="{pct_pose_final}"
-            translation_xyz="0;0;-0.250"
+            translation_xyz="0;0;-0.03;"
             output_pose="{pct_pose_final}"
             quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
             name="Sinter Fine Tuning"
@@ -188,15 +197,21 @@
           <SubTree
             ID="Move to Pose"
             _collapsed="true"
-            velocity_scale_factor="0.0015"
+            velocity_scale_factor="0.002"
             target_pose="{pct_pose_final}"
             ik_frame="j2n6s300_focal_point"
+            link_padding="0.01"
           />
         </Control>
       </Decorator>
     </Control>
   </BehaviorTree>
   <TreeNodesModel>
-    <SubTree ID="SinterContinuous" />
+    <SubTree ID="SinterContinuous">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
   </TreeNodesModel>
 </root>

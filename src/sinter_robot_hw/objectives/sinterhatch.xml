@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<root BTCPP_format="4" main_tree_to_execute="plan_path_along_surface">
+<root BTCPP_format="4" main_tree_to_execute="SinterHatch">
   <BehaviorTree
-    ID="plan_path_along_surface"
+    ID="SinterHatch"
     _description="Plan path from scan at position -&gt; scan_initial"
     _favorite="false"
   >
@@ -47,7 +47,8 @@
         ID="TransformPose"
         input_pose="{centroid_pose}"
         output_pose="{centroid_pose}"
-        quaternion_xyzw="0.707; 0.000; 0.000; 0.707"
+        quaternion_xyzw="0.000; 0.000; 0.000; 1.000"
+        translation_xyz="-0.075;-0.05;0"
       />
       <Action
         ID="VisualizePose"
@@ -64,6 +65,15 @@
         slice_plane="{centroid_pose}"
         slice_distance_from_plane="0.5"
         hull_alpha="-1.0"
+        _skipIf="true"
+      />
+      <Action
+        ID="GenerateCoveragePath"
+        bottom_right_corner="{centroid_pose}"
+        width="0.15"
+        height="0.005"
+        stride_distance="0.003"
+        vector_of_poses="{contour_path}"
       />
       <Control ID="Sequence">
         <SubTree
@@ -111,7 +121,7 @@
           <Action
             ID="TransformPose"
             input_pose="{pct_pose_final}"
-            translation_xyz="0;0;-0.080"
+            translation_xyz="0;0;-0.192"
             output_pose="{pct_pose_final}"
             quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
             name="Sinter Fine Tuning"
@@ -186,5 +196,12 @@
       />
     </Control>
   </BehaviorTree>
-  <TreeNodesModel />
+  <TreeNodesModel>
+    <SubTree ID="SinterHatch">
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
 </root>
