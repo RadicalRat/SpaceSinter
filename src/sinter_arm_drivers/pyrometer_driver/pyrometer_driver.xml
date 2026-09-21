@@ -1,0 +1,11 @@
+<library path="pyrometer_driver">
+  <class name="pyrometer_driver/PyrometerSensorHardware"
+         type="pyrometer_driver::PyrometerSensorHardware"
+         base_class_type="hardware_interface::SensorInterface">
+    <description>
+      Space Sinter team's Optris CT-ratio pyrometer driver. Read-only sensor
+      hardware exposing process/detector/box/ratio/T1/T2 temperatures and
+      attenuation as ros2_control state interfaces. No command interfaces.
+    </description>
+  </class>
+</library>

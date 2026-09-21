@@ -1,0 +1,17 @@
+# udev rule for the Optris CT-ratio pyrometer's USB-serial adapter.
+#
+# Creates a stable /dev/pyrometer symlink so the "port" hardware parameter in
+# the ros2_control xacro does not depend on enumeration order (ttyUSB0/1/...).
+#
+# Find your adapter's vendor/product IDs with:
+#   udevadm info -a -n /dev/ttyUSB0 | grep -E 'idVendor|idProduct|serial'
+#
+# The IDs below (0403:6001) are the common FTDI FT232 USB-serial chip used by
+# many RS232 pyrometer breakout cables — update ATTRS{serial} (or the IDs
+# themselves) to match your specific adapter if you have more than one FTDI
+# device attached.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="pyrometer", MODE="0666"
+
+# Install with:
+#   sudo cp <pkg>/udev/99-pyrometer.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
