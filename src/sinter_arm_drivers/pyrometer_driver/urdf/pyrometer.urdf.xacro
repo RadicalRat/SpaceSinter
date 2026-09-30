@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+  Standalone URDF for launching the pyrometer_driver hardware plugin under
+  ros2_control without a full robot description (see launch/pyrometer_driver.launch.py).
+
+  Usage:
+    xacro pyrometer.urdf.xacro port:=/dev/pyrometer baud_rate:=115200 poll_rate_hz:=100.0
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="pyrometer">
+
+  <xacro:include filename="$(find pyrometer_driver)/urdf/pyrometer_ros2_control_macro.xacro"/>
+
+  <xacro:arg name="sensor_name" default="pyrometer"/>
+  <xacro:arg name="port" default="/dev/pyrometer"/>
+  <xacro:arg name="baud_rate" default="115200"/>
+  <xacro:arg name="poll_rate_hz" default="100.0"/>
+  <xacro:arg name="response_timeout_ms" default="50"/>
+  <xacro:arg name="frame_id" default="pyrometer_link"/>
+
+  <link name="world"/>
+
+  <link name="$(arg frame_id)"/>
+
+  <joint name="world_to_pyrometer" type="fixed">
+    <parent link="world"/>
+    <child link="$(arg frame_id)"/>
+  </joint>
+
+  <xacro:pyrometer_control
+    sensor_name="$(arg sensor_name)"
+    port="$(arg port)"
+    baud_rate="$(arg baud_rate)"
+    poll_rate_hz="$(arg poll_rate_hz)"
+    response_timeout_ms="$(arg response_timeout_ms)"/>
+
+</robot>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+  ros2_control <ros2_control> block for the Optris CT-ratio pyrometer.
+
+  Include and instantiate from a top-level URDF/xacro, e.g.:
+
+    <xacro:include filename="$(find pyrometer_driver)/urdf/pyrometer_ros2_control_macro.xacro"/>
+    <xacro:pyrometer_control port="/dev/pyrometer" baud_rate="115200" poll_rate_hz="100.0"/>
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="pyrometer_control"
+               params="sensor_name:=pyrometer port:=/dev/pyrometer baud_rate:=115200 poll_rate_hz:=100.0 response_timeout_ms:=50">
+    <ros2_control name="${sensor_name}" type="sensor">
+      <hardware>
+        <plugin>pyrometer_driver/PyrometerSensorHardware</plugin>
+        <param name="port">${port}</param>
+        <param name="baud_rate">${baud_rate}</param>
+        <param name="poll_rate_hz">${poll_rate_hz}</param>
+        <param name="response_timeout_ms">${response_timeout_ms}</param>
+      </hardware>
+      <sensor name="${sensor_name}">
+        <state_interface name="process_temperature"/>
+        <state_interface name="detector_temperature"/>
+        <state_interface name="box_temperature"/>
+        <state_interface name="ratio_temperature"/>
+        <state_interface name="t1_temperature"/>
+        <state_interface name="t2_temperature"/>
+        <state_interface name="attenuation"/>
+      </sensor>
+    </ros2_control>
+  </xacro:macro>
+</robot>

@@ -1,0 +1,10 @@
+<library path="pyrometer_broadcaster">
+  <class name="pyrometer_driver/PyrometerBroadcaster"
+         type="pyrometer_driver::PyrometerBroadcaster"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Broadcasts Optris CT-ratio pyrometer state interfaces (process/detector/box/ratio/T1/T2
+      temperatures and attenuation) as sensor_msgs/Temperature and std_msgs/Float64 ROS topics.
+    </description>
+  </class>
+</library>

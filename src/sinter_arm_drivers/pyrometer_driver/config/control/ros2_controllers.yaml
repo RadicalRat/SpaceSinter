@@ -1,0 +1,15 @@
+controller_manager:
+  ros__parameters:
+    # Matches (or exceeds) the pyrometer_driver hardware plugin's poll_rate_hz —
+    # the controller_manager's update() loop rate.
+    update_rate: 100 # Hz
+
+    pyrometer_broadcaster:
+      type: pyrometer_driver/PyrometerBroadcaster
+
+pyrometer_broadcaster:
+  ros__parameters:
+    # Must match the <sensor name="..."> declared in urdf/pyrometer_ros2_control_macro.xacro.
+    sensor_name: pyrometer
+    # Frame stamped on every published sensor_msgs/Temperature message.
+    frame_id: pyrometer_link
