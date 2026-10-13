@@ -5,16 +5,18 @@
   <version>0.0.1</version>
   <description>Driver package for the Kinova Gen2 Jaco Arm</description>
   <maintainer email="enderman9523@gmail.com">cam</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>hardware_interface</depend>
   <depend>rclcpp</depend>
   <depend>pluginlib</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <!-- Runtime dependency of the vendored USBCommLayerUbuntu.so -->
+  <exec_depend>libusb-1.0</exec_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

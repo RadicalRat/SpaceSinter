@@ -3,7 +3,7 @@
          type="kinova_driver::KinovaSystemHardware"
          base_class_type="hardware_interface::SystemInterface">
     <description>
-      Space Sinter team's kinova gen2 hardware driver, to control the gen2 JACO arm from kinova. Uses velocity command interfaces and position,velocity, and effort state interfaces.
+      Space Sinter team's ros2_control driver for the Kinova Gen2 JACO (j2n6s300) over USB. Position or velocity command interfaces; position, velocity and effort state interfaces.
     </description>
   </class>
 </library>

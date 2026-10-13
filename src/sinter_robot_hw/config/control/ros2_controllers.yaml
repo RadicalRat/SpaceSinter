@@ -17,7 +17,7 @@ joint_trajectory_admittance_controller:
   ros__parameters:
     planning_group_name: manipulator
     sensor_frame: j2n6s300_link_6
-    ee_frame: j2n6s300_focal_point
+    ee_frame: ee_focal_point_link
     # ft_sensor_name: tcp_fts_sensor
     # Path tolerance: max joint deviation allowed during trajectory execution.
     # 0.5 rad matches UR/Franka configs — Gen2 USB latency (occasional 170ms+
@@ -42,7 +42,7 @@ velocity_force_controller:
     # Joint group to control.
     planning_group_name: manipulator
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
-    ee_frame: j2n6s300_focal_point
+    ee_frame: ee_focal_point_link
     # The frame where the force / torque sensor reading is given.
     # (Needs to exist in the kinematic chain).
     sensor_frame: j2n6s300_link_6

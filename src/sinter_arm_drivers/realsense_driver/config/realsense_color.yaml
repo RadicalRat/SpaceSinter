@@ -12,8 +12,8 @@ tf_publish_rate: 5.0
 depth_module.depth_profile: 1280x720x30
 spatial_filter.enable: true
 temporal_filter.enable: true
-base_frame_id: j2n6s300
-camera_name: realsense
+base_frame_id: link
+camera_name: ee_realsense
 camera_namespace: realsense
 initial_reset: true
 wait_for_device_timeout: 10.0

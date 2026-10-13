@@ -30,7 +30,7 @@
         stamped_pose="{crop_pose}"
         position_xyz="0;0;0.75"
         orientation_xyzw="1.000; 0.000; 0.000; 0.000"
-        reference_frame="realsense_depth_optical_frame"
+        reference_frame="ee_realsense_depth_optical_frame"
       />
       <Action ID="VisualizePose" pose="{crop_pose}" />
       <Action
@@ -142,7 +142,7 @@
           ID="Move to Pose"
           velocity_scale_factor="1"
           target_pose="{pct_pose_final}"
-          ik_frame="j2n6s300_focal_point"
+          ik_frame="ee_focal_point_link"
         />
       </Control>
       <Decorator
@@ -199,7 +199,7 @@
             _collapsed="true"
             velocity_scale_factor="0.002"
             target_pose="{pct_pose_final}"
-            ik_frame="j2n6s300_focal_point"
+            ik_frame="ee_focal_point_link"
             link_padding="0.01"
           />
         </Control>

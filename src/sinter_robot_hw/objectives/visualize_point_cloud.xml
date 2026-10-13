@@ -21,7 +21,7 @@
         ID="CreateStampedPose"
         stamped_pose="{roi_frame}"
         orientation_xyzw="0.000; 0.000; 0.000; 1.000"
-        reference_frame="realsense_depth_optical_frame"
+        reference_frame="ee_realsense_depth_optical_frame"
         position_xyz="0;0;0.5;"
       />
       <Action ID="VisualizePose" pose="{roi_frame}" />
@@ -40,7 +40,7 @@
         ID="Visualize TF"
         _collapsed="true"
         marker_name="focal"
-        tf_frame_name="j2n6s300_focal_point"
+        tf_frame_name="ee_focal_point_link"
       />
     </Control>
   </BehaviorTree>

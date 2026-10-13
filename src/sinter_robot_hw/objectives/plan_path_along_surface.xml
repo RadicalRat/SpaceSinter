@@ -157,7 +157,7 @@
           ID="Move to Pose"
           _collapsed="true"
           target_pose="{first_pose}"
-          ik_frame="j2n6s300_focal_point"
+          ik_frame="ee_focal_point_link"
           velocity_scale_factor="0.5"
           link_padding="0.01"
         />
@@ -168,7 +168,7 @@
             ik_joint_space_density="0.0100000"
             max_optimizer_iterations="2"
             path="{contour_path}"
-            tip_links="j2n6s300_focal_point"
+            tip_links="ee_focal_point_link"
             position_only="false"
             velocity_scale_factor="0.0025"
             joint_trajectory_msg="{sinter_trajectory}"

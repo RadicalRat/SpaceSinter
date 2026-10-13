@@ -32,7 +32,7 @@
           stamped_pose="{crop_pose}"
           position_xyz="0;0;0.75"
           orientation_xyzw="1.000; 0.000; 0.000; 0.000"
-          reference_frame="realsense_depth_optical_frame"
+          reference_frame="ee_realsense_depth_optical_frame"
         />
         <Action ID="VisualizePose" pose="{crop_pose}" />
         <Action
@@ -91,7 +91,7 @@
         <Action
           ID="PlanCartesianPath"
           path="{contour_path}"
-          tip_links="j2n6s300_focal_point"
+          tip_links="ee_focal_point_link"
           position_only="true"
           joint_trajectory_msg="{joint_trajectory_msg}"
           blending_radius="0.000020000"

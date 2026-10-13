@@ -30,7 +30,7 @@
       <Action
         ID="CreateStampedPose"
         stamped_pose="{pose_stamped_1}"
-        reference_frame="j2n6s300_suncam_optical"
+        reference_frame="ee_camera_optical_link"
       />
       <Action ID="VisualizePose" pose="{pose_stamped_1}" marker_name="before" />
       <Control ID="Sequence" name="Create Quaternion Vector">
@@ -79,7 +79,7 @@
       >
         <Action
           ID="CreateStampedPose"
-          reference_frame="j2n6s300_focal_point"
+          reference_frame="ee_focal_point_link"
           stamped_pose="{focal_pose}"
         />
         <Control ID="Sequence" name="unpack focal">
@@ -134,14 +134,14 @@
       <SubTree
         ID="Visualize TF"
         _collapsed="true"
-        tf_frame_name="j2n6s300_focal_point"
+        tf_frame_name="ee_focal_point_link"
         marker_name="focal_point"
       />
       <SubTree
         ID="Move to Pose"
         _collapsed="true"
         target_pose="{target_pose}"
-        ik_frame="j2n6s300_focal_point"
+        ik_frame="ee_focal_point_link"
         require_user_approval="false"
         velocity_scale_factor="0.25"
         controller_names="joint_trajectory_admittance_controller"
@@ -156,16 +156,16 @@
         <Action
           ID="SetupMTCConnectWithProRRT"
           acceleration_scale_factor="1.000000"
-          keep_orientation_link_names="j2n6s300_focal_point"
+          keep_orientation_link_names="ee_focal_point_link"
           link_padding="0.01"
           max_iterations="10000"
           _skipIf="true"
         />
         <Action
           ID="SetupMTCPlanToPose"
-          ik_frame="j2n6s300_focal_point"
+          ik_frame="ee_focal_point_link"
           keep_orientation="false"
-          keep_orientation_link_names="j2n6s300_focal_point"
+          keep_orientation_link_names="ee_focal_point_link"
           link_padding="0.001"
           max_iterations="10000"
           target_pose="{target_pose}"

@@ -48,8 +48,13 @@
 
       <hardware>
         <plugin>kinova_driver/KinovaSystemHardware</plugin>
-        <param name="state_following_offset">0.0</param>
-        <param name="calculate_dynamics">true</param>
+        <!-- Optional; defaults shown. See kinova_system_hardware.hpp. -->
+        <!-- <param name="serial_number"></param> -->
+        <param name="position_kp">5.0</param>
+        <param name="max_joint_velocity_deg">100.0</param>
+        <param name="io_rate_hz">100</param>
+        <param name="command_timeout_ms">100</param>
+        <param name="max_consecutive_io_errors">10</param>
       </hardware>
     </ros2_control>
   </xacro:macro>

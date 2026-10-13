@@ -57,7 +57,7 @@
       </Control>
       <Action
         ID="CreateStampedPose"
-        reference_frame="j2n6s300_suncam_optical"
+        reference_frame="ee_camera_optical_link"
         stamped_pose="{camera_pose}"
       />
       <Action
@@ -93,7 +93,7 @@
         ID="Visualize TF"
         _collapsed="true"
         marker_name="focal"
-        tf_frame_name="j2n6s300_focal_point"
+        tf_frame_name="ee_focal_point_link"
       />
     </Control>
   </BehaviorTree>

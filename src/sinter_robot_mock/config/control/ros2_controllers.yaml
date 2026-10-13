@@ -20,7 +20,7 @@ joint_trajectory_admittance_controller:
     # Use position command interfaces — hardware driver accepts position trajectory points.
     command_interface_type: position
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
-    ee_frame: j2n6s300_focal_point
+    ee_frame: ee_focal_point_link
     # The frame where the force / torque sensor reading is given.
     # (Needs to exist in the kinematic chain).
     sensor_frame: j2n6s300_link_6
@@ -40,7 +40,7 @@ velocity_force_controller:
     # Joint group to control.
     planning_group_name: manipulator
     # The tip link of the kinematic chain, i.e. the frame that will be controlled.
-    ee_frame: j2n6s300_focal_point
+    ee_frame: ee_focal_point_link
     # The frame where the force / torque sensor reading is given.
     # (Needs to exist in the kinematic chain).
     sensor_frame: j2n6s300_link_6

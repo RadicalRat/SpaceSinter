@@ -1,17 +1,18 @@
 <?xml version="1.0"?>
 <!--
-  Top-level Kinova Jaco2 j2n6s300 URDF (with lens, no gripper).
+  Top-level Kinova Jaco2 j2n6s300 URDF (with sinter end effector, no gripper).
 
   Xacro hierarchy:
     - package://sinter_arm_description/urdf/j2n6s300.urdf.xacro          (this file)
-      - package://sinter_arm_description/urdf/j2n6s300_urdf_macro.xacro  (arm + lens macro)
+      - package://sinter_arm_description/urdf/j2n6s300_urdf_macro.xacro  (arm macro)
+        - package://sinter_arm_description/urdf/end_effector_urdf_macro.xacro  (lens, sun cam, RealSense)
 
   Usage:
     xacro j2n6s300.urdf.xacro
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="j2n6s300">
 
-  <!-- Arm description macro (6 DOF + lens payload) -->
+  <!-- Arm description macro (6 DOF + end effector) -->
   <xacro:include filename="$(find sinter_arm_description)/urdf/j2n6s300_urdf_macro.xacro"/>
 
   <link name="world"/>

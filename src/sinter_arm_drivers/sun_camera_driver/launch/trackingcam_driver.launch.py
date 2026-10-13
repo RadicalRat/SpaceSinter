@@ -16,7 +16,7 @@ def generate_launch_description():
         executable="camera_node",
         parameters=[{
             'camera': 2,
-            'frame_id': 'j2n6s300_suncam_optical',
+            'frame_id': 'ee_camera_optical_link',
             'camera_info_url': ['file://', config_path],
             'orientation': 0,
             'width': 1920,

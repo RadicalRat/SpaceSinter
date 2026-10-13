@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!--
+    Sinter end effector: lens frame + sun-tracking camera + RealSense D415 + focal point.
+
+    Generated from the SolidWorks to URDF exporter (ENDEFFURDF, RealSense from ENDURDF2),
+    adapted as a macro:
+    - Links/joints are prefixed with "ee_"
+    - Meshes live in package://sinter_arm_description/meshes/end_effector/
+    - camera_optical_link and focal_point_link are virtual frames (the exporter
+      failed to write their STLs, and they have no physical geometry)
+    - RealSense mass set to 0.072 kg (D415 datasheet; exports had 300 kg / 0.03 kg with
+      zero inertia), inertia approximated as a solid 20 x 99 x 23 mm box about the CAD COM
+    - RealSense joint y is +0.02, not the ENDURDF2 value of -0.02: ENDURDF2 moved the
+      realsense_link coordinate system to the left imager but the exported joint origin
+      shifted the wrong way, leaving the body 40 mm off its bracket. +0.02 centers the
+      body on the bracket shelf with the frame on the left imager
+    - Focal point frame rolled 180 deg from the CAD frame so +Z points back toward the
+      lens, matching the convention the objectives were tuned against
+
+    End effector frame (ee_end_effector_link):
+      +X along the tool axis away from the wrist, +Y lens normal (toward the sun),
+      +Z across the lens. Origin is the mount face on the j2n6s300 end cap.
+  -->
+
+  <xacro:macro name="sinter_end_effector" params="parent">
+
+    <xacro:property name="PI" value="3.1415926535897931"/>
+    <xacro:property name="mesh_dir" value="package://sinter_arm_description/meshes/end_effector"/>
+
+    <!-- ========================================== -->
+    <!--    Mount: arm end cap -> end effector      -->
+    <!-- ========================================== -->
+
+    <joint name="ee_mount_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="ee_end_effector_link"/>
+      <origin xyz="0 0 0" rpy="0 ${PI/2} ${PI}"/>
+    </joint>
+
+    <!-- ========================================== -->
+    <!--     End Effector (lens frame + brackets)   -->
+    <!-- ========================================== -->
+
+    <link name="ee_end_effector_link">
+      <inertial>
+        <origin xyz="0.18863 0.0057467 -0.00036229" rpy="0 0 0"/>
+        <mass value="1.6259"/>
+        <inertia ixx="0.025724" ixy="-2.9E-05" ixz="8.1866E-07"
+                 iyy="0.041536" iyz="8.9811E-08"
+                 izz="0.016039"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/end_effector_link.STL"/>
+        </geometry>
+        <material name="ee_frame">
+          <color rgba="0.86667 0.9098 1 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/end_effector_link.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- ========================================== -->
+    <!--      Sun-Tracking Camera (Arducam B0332)   -->
+    <!-- ========================================== -->
+
+    <link name="ee_camera_link">
+      <inertial>
+        <origin xyz="0.0047642 9.2314E-05 0.00023254" rpy="0 0 0"/>
+        <mass value="0.0048013"/>
+        <inertia ixx="5.6171E-07" ixy="3.8603E-09" ixz="1.1217E-08"
+                 iyy="4.2581E-07" iyz="-8.9848E-09"
+                 izz="4.1395E-07"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/camera_link.STL"/>
+        </geometry>
+        <material name="ee_camera">
+          <color rgba="0.74902 0.74902 0.74902 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/camera_link.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="ee_camera_joint" type="fixed">
+      <parent link="ee_end_effector_link"/>
+      <child link="ee_camera_link"/>
+      <origin xyz="0.072 0.03 -0.105" rpy="-1.5708 0 1.5708"/>
+    </joint>
+
+    <!-- Optical frame (REP-103 optical: +Z out of the lens). Virtual frame. -->
+    <link name="ee_camera_optical_link"/>
+
+    <joint name="ee_camera_optical_joint" type="fixed">
+      <parent link="ee_camera_link"/>
+      <child link="ee_camera_optical_link"/>
+      <origin xyz="0.016975 0 0" rpy="-1.5708 0 -1.5708"/>
+    </joint>
+
+    <!-- ========================================== -->
+    <!--            RealSense D415                  -->
+    <!-- ========================================== -->
+
+    <!--
+      Also the root of the realsense2_camera driver's TF tree: the driver names it
+      camera_name + "_" + base_frame_id (ee_realsense + link, see
+      realsense_driver/config/realsense_color.yaml) and publishes its sensor/optical frames
+      (e.g. ee_realsense_depth_optical_frame) under it. Follows the RealSense camera_link
+      convention: origin on the left IR imager, +X out of the glass, +Y toward the camera's
+      left (the body extends toward -Y), +Z up.
+    -->
+    <link name="ee_realsense_link">
+      <inertial>
+        <origin xyz="-0.0089165 -0.018936 -7.84E-05" rpy="0 0 0"/>
+        <mass value="0.072"/>
+        <inertia ixx="6.198E-05" ixy="0" ixz="0"
+                 iyy="5.574E-06" iyz="0"
+                 izz="6.121E-05"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/realsense_link.STL"/>
+        </geometry>
+        <material name="ee_realsense">
+          <color rgba="0.79216 0.81961 0.92941 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="${mesh_dir}/realsense_link.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="ee_realsense_joint" type="fixed">
+      <parent link="ee_end_effector_link"/>
+      <child link="ee_realsense_link"/>
+      <origin xyz="0.031 0.02 0.14495" rpy="0 -1.5708 0"/>
+    </joint>
+
+    <!-- ========================================== -->
+    <!--   Focal Point (virtual frame)              -->
+    <!--   +Z points back toward the lens           -->
+    <!-- ========================================== -->
+
+    <link name="ee_focal_point_link"/>
+
+    <joint name="ee_focal_point_joint" type="fixed">
+      <parent link="ee_end_effector_link"/>
+      <child link="ee_focal_point_link"/>
+      <!-- CAD rpy is (1.5708 1.5708 0); extra 180 deg roll keeps +Z toward the lens -->
+      <origin xyz="0.27718 -0.39258 0" rpy="-1.5708 1.5708 0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

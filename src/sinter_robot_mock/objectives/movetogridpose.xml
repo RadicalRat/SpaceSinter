@@ -9,7 +9,7 @@
     <Control ID="Sequence" name="TopLevelSequence">
       <Action
         ID="CreateStampedPose"
-        reference_frame="j2n6s300_focal_point"
+        reference_frame="ee_focal_point_link"
         stamped_pose="{tip_pose}"
       />
       <Action

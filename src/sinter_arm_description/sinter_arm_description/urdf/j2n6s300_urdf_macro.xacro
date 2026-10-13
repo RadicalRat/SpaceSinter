@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find sinter_arm_description)/urdf/end_effector_urdf_macro.xacro"/>
   <!--
     Kinova Jaco2 6DOF Non-Spherical (j2n6s300)
-    6 DOF arm with 600x600x30mm lens payload (replaces gripper).
+    6 DOF arm with the sinter end effector (lens, sun camera, RealSense) replacing the gripper.
+    End effector is defined in end_effector_urdf_macro.xacro.
 
     Follows PickNik xacro naming conventions:
     - *_urdf_macro.xacro : macro definitions only, no output when included
@@ -247,7 +249,7 @@
     <!--    Link 6 - End Cap / Mount (continuous)   -->
     <!-- ========================================== -->
 
-    <!-- Link 6 is a virtual mount point: gripper/end effector removed, lens attaches here -->
+    <!-- Link 6 is a virtual mount point: gripper removed, end effector attaches here -->
     <link name="${prefix}_link_6">
       <inertial>
         <mass value="0.99"/>
@@ -268,81 +270,11 @@
     </joint>
 
     <!-- ========================================== -->
-    <!--        Lens Payload (600x600x30mm)         -->
+    <!--   End Effector (lens, sun cam, RealSense)  -->
     <!--   Fixed to link_6, replaces gripper        -->
     <!-- ========================================== -->
 
-    <link name="${prefix}_lens">
-      <visual>
-        <origin xyz="0 -0.01002 0.00827" rpy="0 0 0"/>
-        <geometry>
-          <box size="0.500 0.532 0.025"/>
-        </geometry>
-        <material name="lens_glass">
-          <color rgba="0.3 0.3 0.8 0.5"/>
-        </material>
-      </visual>
-      <collision>
-        <origin xyz="0 -0.01002 0.00827" rpy="0 0 0"/>
-        <geometry>
-          <box size="0.500 0.532 0.025"/>
-        </geometry>
-      </collision>
-      <inertial>
-        <mass value="5.0"/>
-        <origin xyz="0 0 0"/>
-        <inertia ixx="0.150375" ixy="0" ixz="0"
-                 iyy="0.150375" iyz="0"
-                 izz="0.300000"/>
-      </inertial>
-    </link>
-
-    <joint name="${prefix}_lens_joint" type="fixed">
-      <parent link="${prefix}_link_6"/>
-      <child link="${prefix}_lens"/>
-      <origin xyz="-0.00827 0 -0.27602" rpy="${-PI/2} 0 0"/>
-    </joint>
-
-    <!-- ========================================== -->
-    <!--   Focal Point (400mm along lens Z-axis)    -->
-    <!--   Virtual frame — no geometry/inertia      -->
-    <!-- ========================================== -->
-
-    <link name="${prefix}_focal_point"/>
-
-    <joint name="${prefix}_focal_point_joint" type="fixed">
-      <parent link="${prefix}_lens"/>
-      <child link="${prefix}_focal_point"/>
-      <origin xyz="0 0 0.4" rpy="${PI} 0 0"/>
-    </joint>
-
-    <!-- ========================================== -->
-    <!--   Camera Frame (reference middle of lens)  -->
-    <!--   Virtual frame — no geometry/inertia      -->
-    <!-- ========================================== -->
-
-    <link name="${prefix}_suncam_optical"/>
-
-    <joint name="${prefix}_suncam_joint" type="fixed">
-      <parent link="${prefix}_lens"/>
-      <child link="${prefix}_suncam_optical"/>
-      <origin xyz="0.065 -0.20452 -0.04178" rpy="${PI} 0 0"/>
-    </joint>
-
-
-    <!-- ========================================== -->
-    <!--   Realsense Camera Frame                   -->
-    <!--   Virtual frame — no geometry/inertia      -->
-    <!-- ========================================== -->
-
-    <link name="realsense_${prefix}"/>
-
-    <joint name="${prefix}_realsense_joint" type="fixed">
-      <parent link="${prefix}_lens"/>
-      <child link="realsense_${prefix}"/>
-      <origin xyz="-0.12645 -0.24618 -0.01158" rpy="${-PI/2} 0 ${PI}"/>
-    </joint>
-
+    <xacro:sinter_end_effector parent="${prefix}_link_6"/>
 
   </xacro:macro>
 

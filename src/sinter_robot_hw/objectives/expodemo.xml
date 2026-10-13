@@ -14,12 +14,12 @@
         <SubTree
           ID="Visualize TF"
           _collapsed="true"
-          tf_frame_name="j2n6s300_focal_point"
+          tf_frame_name="ee_focal_point_link"
           marker_name="focal"
         />
         <Action
           ID="CreateStampedPose"
-          reference_frame="j2n6s300_focal_point"
+          reference_frame="ee_focal_point_link"
           position_xyz="-0.375;0.125;0;"
         />
         <Action
@@ -30,7 +30,7 @@
         />
         <Action
           ID="CreateStampedPose"
-          reference_frame="j2n6s300_focal_point"
+          reference_frame="ee_focal_point_link"
           position_xyz="0;0.25;0;"
           stamped_pose="{pose_stamped_2}"
           orientation_xyzw="0.000; 0.000; -0.707; 0.707"
@@ -44,7 +44,7 @@
         <SubTree
           ID="Move to Pose"
           _collapsed="true"
-          ik_frame="j2n6s300_focal_point"
+          ik_frame="ee_focal_point_link"
           link_padding="0.01"
           planning_group_name="manipulator"
           target_pose="{pose_stamped}"
@@ -52,7 +52,7 @@
         <Action ID="WaitForDuration" delay_duration="3.0" />
         <SubTree
           ID="Move to Pose"
-          ik_frame="j2n6s300_focal_point"
+          ik_frame="ee_focal_point_link"
           link_padding="0.01"
           planning_group_name="manipulator"
           target_pose="{pose_stamped_2}"

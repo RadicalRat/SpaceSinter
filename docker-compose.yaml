@@ -23,6 +23,7 @@ services:
 
   # Starts the robot drivers.
   drivers:
+    privileged: true   # Required for libusb (Kinova arm raw USB access)
     volumes:
       # Allow access to host hardware e.g. RealSense cameras
       - /dev:/dev
@@ -32,6 +33,7 @@ services:
 
   # Developer specific configuration when running `moveit_pro dev`.
   dev:
+    privileged: true   # Required for libusb (Kinova arm raw USB access)
     volumes:
       # Allow access to host hardware e.g. RealSense cameras
       - /dev:/dev
