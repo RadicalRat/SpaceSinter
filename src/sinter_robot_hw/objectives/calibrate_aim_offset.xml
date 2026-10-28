@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Calibrate Aim Offset">
+  <BehaviorTree
+    ID="Calibrate Aim Offset"
+    _description="Finds the sun camera aim offset without teleop. Start with the lens roughly on the sun and hold cardboard (or the sand) at the focal point. For each candidate aim offset it aligns the lens to the sun about the focal point (so the focal point stays put) and holds for hold_time_s while it logs the step; watch the spot and note the step where it is smallest and roundest. Then set aim_offset_x_rad / aim_offset_y_rad in Sinter Raster Closed Loop to that step's values. Steps: center, then x from -0.06 to +0.06, then y from -0.06 to +0.06 (0.02 rad is about 1.1 deg, about 7 mm of spot motion at the focus)."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action
+        ID="Script"
+        code="alignment_tolerance_rad := 0.0035; max_align_attempts := 6; align_velocity_scale := 0.25; settle_time_s := 0.5; hold_time_s := 8.0"
+      />
+      <Control ID="Sequence" name="Step 1/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 1/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 1/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 2/13: aim_offset_x_rad=-0.06 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := -0.06; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 2/13: aim_offset_x_rad=-0.06 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 2/13: aim_offset_x_rad=-0.06 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 3/13: aim_offset_x_rad=-0.04 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := -0.04; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 3/13: aim_offset_x_rad=-0.04 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 3/13: aim_offset_x_rad=-0.04 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 4/13: aim_offset_x_rad=-0.02 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := -0.02; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 4/13: aim_offset_x_rad=-0.02 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 4/13: aim_offset_x_rad=-0.02 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 5/13: aim_offset_x_rad=+0.02 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := 0.02; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 5/13: aim_offset_x_rad=+0.02 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 5/13: aim_offset_x_rad=+0.02 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 6/13: aim_offset_x_rad=+0.04 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := 0.04; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 6/13: aim_offset_x_rad=+0.04 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 6/13: aim_offset_x_rad=+0.04 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 7/13: aim_offset_x_rad=+0.06 aim_offset_y_rad=+0.00">
+        <Action ID="Script" code="aim_x := 0.06; aim_y := 0.0" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 7/13: aim_offset_x_rad=+0.06 aim_offset_y_rad=+0.00 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 7/13: aim_offset_x_rad=+0.06 aim_offset_y_rad=+0.00 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 8/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.06">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := -0.06" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 8/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.06 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 8/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.06 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 9/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.04">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := -0.04" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 9/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.04 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 9/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.04 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 10/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.02">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := -0.02" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 10/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.02 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 10/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=-0.02 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 11/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.02">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := 0.02" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 11/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.02 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 11/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.02 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 12/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.04">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := 0.04" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 12/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.04 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 12/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.04 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+      <Control ID="Sequence" name="Step 13/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.06">
+        <Action ID="Script" code="aim_x := 0.0; aim_y := 0.06" />
+        <Control ID="Fallback">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Align Lens To Sun"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_x}"
+              aim_offset_y_rad="{aim_y}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="LogMessage" message="Step 13/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.06 -- HOLDING, check the spot now" log_level="warn" />
+            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+          </Control>
+          <Action ID="LogMessage" message="Step 13/13: aim_offset_x_rad=+0.00 aim_offset_y_rad=+0.06 -- could not align, skipped" log_level="warn" />
+        </Control>
+      </Control>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Calibrate Aim Offset">
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

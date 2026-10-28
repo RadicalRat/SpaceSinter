@@ -2,6 +2,8 @@
 #include <moveit_pro_behavior_interface/behavior_context.hpp>
 #include <moveit_pro_behavior_interface/shared_resources_node_loader.hpp>
 
+#include <sun_pose_finder/compute_sun_ephemeris.hpp>
+#include <sun_pose_finder/fit_plane_raster_path.hpp>
 #include <sun_pose_finder/sun_pose_finder.hpp>
 
 #include <pluginlib/class_list_macros.hpp>
@@ -15,6 +17,8 @@ public:
     [[maybe_unused]] const std::shared_ptr<moveit_pro::behaviors::BehaviorContext>& shared_resources) override
   {
     moveit_pro::behaviors::registerBehavior<SunPoseFinder>(factory, "SunPoseFinder", shared_resources);
+    moveit_pro::behaviors::registerBehavior<ComputeSunEphemeris>(factory, "ComputeSunEphemeris", shared_resources);
+    moveit_pro::behaviors::registerBehavior<FitPlaneRasterPath>(factory, "FitPlaneRasterPath", shared_resources);
     
   }
 };

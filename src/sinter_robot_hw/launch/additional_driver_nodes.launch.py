@@ -14,4 +14,7 @@ def generate_launch_description():
     # static_transform_publisher_node = Node(package="tf2_ros", executable="static_transform_publisher", arguments=node_params)
 
 
-    return LaunchDescription([])
+    # Solar flux from NREL SRRL (Golden), once a minute, so every rosbag has the DNI for the trial.
+    srrl_irradiance_node = Node(package="srrl_irradiance", executable="srrl_irradiance_node", output="screen")
+
+    return LaunchDescription([srrl_irradiance_node])

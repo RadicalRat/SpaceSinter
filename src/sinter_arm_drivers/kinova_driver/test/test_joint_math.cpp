@@ -39,6 +39,28 @@ TEST(KinovaPosition, RevoluteJointsKeepFirmwareRange)
   EXPECT_NEAR(kinova_driver::kinovaPositionToRad(270.0f, false), 270.0 * kDegToRad, 1e-6);
 }
 
+TEST(UnwrapAngle, CrossesSeamWithoutJump)
+{
+  // Joint 6 turning negative through −π: wrapped readings jump to +π, unwrapped ones keep going.
+  double pos = -2.98;
+  for (const double wrapped : { -3.10, 3.12, 3.00, 2.90 }) {
+    const double next = kinova_driver::unwrapAngle(pos, wrapped);
+    EXPECT_LT(std::abs(next - pos), 0.2);
+    EXPECT_NEAR(kinova_driver::wrapToPi(next), kinova_driver::wrapToPi(wrapped), 1e-12);
+    pos = next;
+  }
+  EXPECT_NEAR(pos, 2.90 - 2.0 * M_PI, 1e-12);
+
+  // And back again unwinds to the original turn.
+  for (const double wrapped : { 3.12, -3.10, -2.98 }) {
+    pos = kinova_driver::unwrapAngle(pos, wrapped);
+  }
+  EXPECT_NEAR(pos, -2.98, 1e-12);
+
+  // No previous value yet: take the reading as is.
+  EXPECT_NEAR(kinova_driver::unwrapAngle(std::nan(""), 1.0), 1.0, 1e-12);
+}
+
 TEST(KinovaVelocity, DecodesNegativeAndDoubles)
 {
   EXPECT_NEAR(kinova_driver::kinovaVelocityToRad(10.0f), 20.0 * kDegToRad, 1e-6);

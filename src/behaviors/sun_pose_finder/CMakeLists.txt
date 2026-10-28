@@ -8,7 +8,7 @@ find_package(cv_bridge REQUIRED)
 moveit_pro_package()
 
 
-set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface pluginlib cv_bridge)
+set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface pluginlib cv_bridge sensor_msgs geometry_msgs nav_msgs std_msgs tf2_eigen)
 foreach(package IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${package} REQUIRED)
 endforeach()
@@ -17,6 +17,8 @@ add_library(
   sun_pose_finder
   SHARED
   src/sun_pose_finder.cpp
+  src/compute_sun_ephemeris.cpp
+  src/fit_plane_raster_path.cpp
   src/register_behaviors.cpp)
 
 target_include_directories(

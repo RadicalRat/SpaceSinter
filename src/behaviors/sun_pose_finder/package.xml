@@ -21,6 +21,9 @@
   <depend>libopencv-dev</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_eigen</depend>
+  <depend>eigen</depend>
   <depend>cv_bridge</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>

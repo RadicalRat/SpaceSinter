@@ -1,0 +1,39 @@
+# Parameters for the simulated sun camera (scripts/sim_sun_camera.py).
+# Intrinsics come from the real camera's calibration
+# (sun_camera_driver/config/trackingcam.yaml), set by the launch file.
+sim_sun_camera:
+  ros__parameters:
+    world_frame: world
+    camera_frame: ee_camera_optical_link
+
+    # GetImage subscribes fresh each tick, so a frame is up to 1/rate old.
+    publish_rate_hz: 30.0
+    # The calibration is for the real camera's 1280x720 mode; 1.0 matches it.
+    image_scale: 1.0
+
+    # Sun placement:
+    #   in_view — at startup, put the sun just off the camera axis by
+    #             initial_offset_deg [x, y] so there is something to track
+    #   fixed   — use sun_azimuth_deg / sun_elevation_deg (world frame)
+    # Azimuth/elevation can also be changed live with `ros2 param set`, and the
+    # ~/place_sun_in_view service re-centres the sun in front of the camera.
+    sun_placement: in_view
+    initial_offset_deg: [4.0, -3.0]
+    sun_azimuth_deg: 0.0
+    sun_elevation_deg: 45.0
+    # Rotates the sun about world Z to test continuous tracking.
+    # The real sun moves ~0.004 deg/s; use something like 0.5 to see it.
+    sun_drift_deg_per_s: 0.0
+
+    # Appearance.  The detector thresholds at 240, so only the saturated
+    # core counts toward blob size; the halo is cosmetic.
+    sun_angular_diameter_deg: 1.5
+    halo_scale: 1.5
+    background_level: 12
+    noise_stddev: 3.0
+
+    # Warn when the camera TF used for a frame is older than this (lagging arm).
+    max_tf_age_s: 0.1
+
+    # Distance from the world origin of the sim_sun TF frame, for visualisation.
+    sun_marker_distance_m: 1.5

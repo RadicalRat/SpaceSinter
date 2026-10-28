@@ -10,6 +10,16 @@
         ID="Move to Waypoint"
         _collapsed="true"
         waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
       />
       <SubTree ID="Clear Snapshot" _collapsed="true" />
       <!--Get Point cloud scan and crop. Send to UI-->
@@ -57,6 +67,7 @@
       />
       <Action
         ID="GetContourFromPointCloudSlice"
+        _skipIf="true"
         contour_crop_angle_span="3.1415"
         contour_crop_angle_start="3.1415"
         contour_path="{contour_path}"
@@ -65,7 +76,6 @@
         slice_plane="{centroid_pose}"
         slice_distance_from_plane="0.5"
         hull_alpha="-1.0"
-        _skipIf="true"
       />
       <Action
         ID="GenerateCoveragePath"
@@ -79,13 +89,26 @@
         <SubTree
           ID="Move to Waypoint"
           _collapsed="true"
-          waypoint_name="Sun_Scan"
+          waypoint_name="Home"
           joint_group_name="manipulator"
+          acceleration_scale_factor="1.0"
+          controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+          controller_names="joint_trajectory_admittance_controller"
+          execution_pipeline="jtac"
+          keep_orientation="false"
+          keep_orientation_tolerance="0.05"
+          link_padding="0.01"
+          seed="0"
+          velocity_scale_factor="1.0"
         />
         <Decorator ID="Repeat" num_cycles="2">
           <SubTree ID="TrackBlob" _collapsed="true" />
         </Decorator>
-        <SubTree ID="GetSunOrientation" _collapsed="true" />
+        <SubTree
+          ID="GetSunOrientation"
+          _collapsed="true"
+          sun_orientation="{sun_orientation}"
+        />
       </Control>
       <Decorator
         ID="ForEach"
@@ -120,11 +143,11 @@
           />
           <Action
             ID="TransformPose"
+            name="Sinter Fine Tuning"
             input_pose="{pct_pose_final}"
             translation_xyz="0;0;-0.192"
             output_pose="{pct_pose_final}"
             quaternion_xyzw="-0.017; 0.000; 0.000; 1.000"
-            name="Sinter Fine Tuning"
           />
           <Action
             ID="ReplaceInVector"
@@ -159,9 +182,19 @@
         <Action ID="VisualizePose" marker_name="leadin" pose="{first_pose}" />
         <SubTree
           ID="Move to Waypoint"
+          _collapsed="true"
+          _skipIf="true"
           waypoint_name="BeforeSinter"
           velocity_scale_factor="0.5"
-          _skipIf="true"
+          acceleration_scale_factor="1.0"
+          controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+          controller_names="joint_trajectory_admittance_controller"
+          execution_pipeline="jtac"
+          joint_group_name="manipulator"
+          keep_orientation="false"
+          keep_orientation_tolerance="0.05"
+          link_padding="0.01"
+          seed="0"
         />
         <SubTree
           ID="Move to Pose"
@@ -170,6 +203,13 @@
           ik_frame="ee_focal_point_link"
           velocity_scale_factor="0.5"
           link_padding="0.01"
+          controller_names="joint_trajectory_admittance_controller"
+          controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+          execution_pipeline="jtac"
+          max_ik_solutions="8"
+          max_mtc_solutions="0"
+          planning_group_name="manipulator"
+          require_user_approval="false"
         />
         <Decorator ID="RetryUntilSuccessful" num_attempts="3">
           <Action
@@ -191,16 +231,27 @@
       </Control>
       <SubTree
         ID="Move to Waypoint"
-        waypoint_name="Scan_Initial"
+        _collapsed="true"
         _skipIf="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
       />
     </Control>
   </BehaviorTree>
   <TreeNodesModel>
     <SubTree ID="SinterHatch">
       <MetadataFields>
-        <Metadata subcategory="Sinter" />
         <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
       </MetadataFields>
     </SubTree>
   </TreeNodesModel>

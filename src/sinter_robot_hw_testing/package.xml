@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<package format="3">
+  <name>sinter_robot_hw_testing</name>
+  <version>0.0.1</version>
+  <description>Real space sinter arm with a simulated sun camera, for testing tracking indoors</description>
+
+  <maintainer email="cameronhinkle@mines.edu">
+    Cameron Hinkle
+  </maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>sinter_robot_hw</depend>
+  <depend>sinter_robot_mock</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>realsense_driver</exec_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

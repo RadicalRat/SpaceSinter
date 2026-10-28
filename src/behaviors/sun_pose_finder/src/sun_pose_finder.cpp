@@ -18,6 +18,8 @@
 // #include <opencv2/imgproc.hpp>
 // #include <opencv2/highgui.hpp>
 #include <opencv2/features2d.hpp>
+#include <cmath>
+#include <limits>
 #include <vector>
 #include <map>
 #include <iostream>
@@ -40,6 +42,7 @@ SunPoseFinder::SunPoseFinder(
     const std::string& name, const BT::NodeConfiguration& config,
     const std::shared_ptr<moveit_pro::behaviors::BehaviorContext>& shared_resources)
   : moveit_pro::behaviors::SharedResourcesNode<BT::SyncActionNode>(name, config, shared_resources)
+  , sun_error_pub_(shared_resources->node->create_publisher<geometry_msgs::msg::Vector3Stamped>("/sinter/sun_error", 10))
 {
   cv::SimpleBlobDetector::Params params;
   params.minThreshold = 240;
@@ -49,7 +52,7 @@ SunPoseFinder::SunPoseFinder(
   params.filterByColor = true;
   params.blobColor = 255;  // detect bright blobs, not dark ones
   params.filterByArea = true;
-  params.minArea = 50;
+  params.minArea = 15;  // 1280x720 sun camera mode: the saturated core is ~200 px
   params.filterByCircularity = true;
   params.minCircularity = 0.5;
   params.filterByConvexity = true;
@@ -71,6 +74,9 @@ BT::PortsList SunPoseFinder::providedPorts()
                         BT::InputPort<sensor_msgs::msg::CameraInfo>("camera_info","Intrinsics info message of the camera"),
                         BT::OutputPort<geometry_msgs::msg::Quaternion>("cameraOrientation", "Orientation normalized vector to the sun in the camera frame"),
                         BT::OutputPort<sensor_msgs::msg::Image>("output_image","Outgoing image stream with blob shown on the image, used for debugging"),
+                        BT::OutputPort<double>("alignment_error_rad", "Angle between the lens axis and the ray to the sun, in radians"),
+                        BT::InputPort<double>("aim_offset_x_rad", 0.0, "Where the sun appears in the camera (tan of the angle along image +x) when the lens itself is on the sun: corrects a sun camera that is not parallel to the lens"),
+                        BT::InputPort<double>("aim_offset_y_rad", 0.0, "Same as aim_offset_x_rad, along image +y (down)"),
                       });
 }
 
@@ -135,9 +141,12 @@ BT::NodeStatus SunPoseFinder::tick()
     double cx = info.value().k[2];
     double cy = info.value().k[5];
 
-    // calculate vector segments
-    double vx = (sun_center.x - cx) / fx;
-    double vy = (sun_center.y - cy) / fy;
+    // calculate vector segments, relative to where the sun sits in the image when the lens is aligned
+    const double aim_x = getInput<double>("aim_offset_x_rad").value_or(0.0);
+    const double aim_y = getInput<double>("aim_offset_y_rad").value_or(0.0);
+    const cv::Point2f aim_px(static_cast<float>(cx + aim_x * fx), static_cast<float>(cy + aim_y * fy));
+    double vx = (sun_center.x - cx) / fx - aim_x;
+    double vy = (sun_center.y - cy) / fy - aim_y;
     double vz = 1.0;
     
     // create a 3d opencv vector and normalize
@@ -149,7 +158,9 @@ BT::NodeStatus SunPoseFinder::tick()
 
     tf2::Quaternion camera_transform;
 
-    camera_transform.setRPY(vy, -vx, 0);  // roll corrects vertical (vy), pitch corrects horizontal (vx)
+    // Rotation in the optical frame (x right, y down, z out) that turns +Z toward the sun:
+    // pitch about +Y by vx moves the axis right, roll about +X by -vy moves it down.
+    camera_transform.setRPY(-vy, vx, 0);
     camera_transform.normalize();
     geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(camera_transform);
 
@@ -160,6 +171,14 @@ BT::NodeStatus SunPoseFinder::tick()
       ", vx=" + std::to_string(vx).substr(0, 6) + " vy=" + std::to_string(vy).substr(0, 6));
 
     setOutput("cameraOrientation", quat_msg);
+    setOutput("alignment_error_rad", std::atan(std::hypot(vx, vy)));
+
+    geometry_msgs::msg::Vector3Stamped error_msg;
+    error_msg.header = image.value().header;
+    error_msg.vector.x = vx;
+    error_msg.vector.y = vy;
+    error_msg.vector.z = std::atan(std::hypot(vx, vy));
+    sun_error_pub_->publish(error_msg);
 
     // == Draw visualization onto image ==
     cv::Mat annotated;
@@ -168,9 +187,9 @@ BT::NodeStatus SunPoseFinder::tick()
                       cv::Scalar(0, 255, 0),  // green
                       cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
-    // Draw arrow from image principal point toward the blob (angular offset direction)
+    // Draw arrow from the aim point (principal point + aim offset) toward the blob (angular offset direction)
     cv::arrowedLine(annotated,
-                    cv::Point2f(static_cast<float>(cx), static_cast<float>(cy)),
+                    aim_px,
                     sun_center,
                     cv::Scalar(255, 165, 0), 3);  // orange
 
@@ -188,6 +207,10 @@ BT::NodeStatus SunPoseFinder::tick()
     return BT::NodeStatus::SUCCESS;
 
   } else {
+    geometry_msgs::msg::Vector3Stamped error_msg;
+    error_msg.header = image.value().header;
+    error_msg.vector.x = error_msg.vector.y = error_msg.vector.z = std::numeric_limits<double>::quiet_NaN();
+    sun_error_pub_->publish(error_msg);
     shared_resources_->logger->publishInfoMessage(
       "SunPoseFinder: no bright blobs found (threshold=" + std::to_string(240) + "). Returning FAILURE.");
     return BT::NodeStatus::FAILURE;

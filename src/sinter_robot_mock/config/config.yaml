@@ -10,6 +10,10 @@ hardware:
     srdf:
       package: "sinter_robot_mock"
       path: "config/moveit/j2n300s.srdf"
+  # Simulated sun camera; the hardware config overrides this with real drivers.
+  robot_driver_persist_launch_file:
+    package: "sinter_robot_mock"
+    path: "launch/sim_nodes.launch.py"
   launch_control_node: true
   launch_robot_state_publisher: true
   simulated: false
@@ -23,12 +27,16 @@ ros2_control:
     package: "sinter_robot_mock"
     path: "config/control/ros2_controllers.yaml"
 
+  # Only one commanding controller may be active at a time: the mock hardware
+  # (GenericSystem with calculate_dynamics) follows whichever command interface
+  # was claimed last, so an active velocity controller makes JTAC's position
+  # commands get ignored and trajectories abort on path tolerance.
   controllers_active_at_startup:
     - "joint_state_broadcaster"
     - "joint_trajectory_admittance_controller"
-    - "joint_velocity_controller"
   controllers_inactive_at_startup:
     - "velocity_force_controller"
+    - "joint_velocity_controller"
 
 moveit_params:
   joint_group_name: "manipulator"
@@ -91,6 +99,11 @@ objectives:
       relative_path: "objectives/visualization"
     sinter_objectives:
       package_name: "sinter_robot_mock"
+      relative_path: "objectives"
+    # Camera objectives (TrackBlob, GetSunOrientation, ...) live with the hardware
+    # config; load them here too so they run against the simulated camera.
+    sinter_hw_objectives:
+      package_name: "sinter_robot_hw"
       relative_path: "objectives"
 
   waypoints_file:

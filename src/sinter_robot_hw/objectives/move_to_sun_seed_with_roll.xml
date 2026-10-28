@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Move To Sun Seed With Roll">
+  <BehaviorTree
+    ID="Move To Sun Seed With Roll"
+    _description="Points the lens at the sun from the ephemeris model, rotating about the focal point, with the lens rolled by {roll_xyzw} about its optical axis (focal frame +Z). The roll does not change where the lens points, so this gives IK another way to reach a low sun. Fails if the sun is below the horizon limit or the rolled pose cannot be planned or executed."
+    _favorite="false"
+    roll_xyzw="{roll_xyzw}"
+    latitude_deg="{latitude_deg}"
+    longitude_deg="{longitude_deg}"
+    north_heading_deg="{north_heading_deg}"
+    velocity_scale_factor="{velocity_scale_factor}"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!--Roll the reference pose in the focal frame (TransformPose rotates in the header frame). ComputeSunEphemeris turns the pose's +Z onto the sun with the smallest rotation, which keeps this roll.-->
+      <Action
+        ID="CreatePoseStamped"
+        reference_frame="ee_focal_point_link"
+        position_xyz="0;0;0"
+        orientation_xyzw="{roll_xyzw}"
+        pose_stamped="{rolled_focal}"
+      />
+      <Action
+        ID="TransformPoseFrame"
+        input_pose="{rolled_focal}"
+        target_frame_id="world"
+        output_pose="{rolled_focal_world}"
+      />
+      <Action
+        ID="ComputeSunEphemeris"
+        reference_pose="{rolled_focal_world}"
+        latitude_deg="{latitude_deg}"
+        longitude_deg="{longitude_deg}"
+        north_heading_deg="{north_heading_deg}"
+        utc_time=""
+        min_elevation_deg="5.0"
+        aligned_pose="{sun_seed_pose}"
+        sun_azimuth_deg="{sun_azimuth_deg}"
+        sun_elevation_deg="{sun_elevation_deg}"
+      />
+      <Action ID="VisualizePose" pose="{sun_seed_pose}" marker_name="ephemeris_sun" />
+      <SubTree
+        ID="Move to Pose"
+        _collapsed="true"
+        target_pose="{sun_seed_pose}"
+        ik_frame="ee_focal_point_link"
+        velocity_scale_factor="{velocity_scale_factor}"
+        link_padding="0.01"
+        controller_names="joint_trajectory_admittance_controller"
+        controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        execution_pipeline="jtac"
+        planning_group_name="manipulator"
+        require_user_approval="false"
+        max_ik_solutions="8"
+        max_mtc_solutions="0"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Move To Sun Seed With Roll">
+      <input_port name="roll_xyzw" default="0;0;0;1" type="std::vector&lt;double&gt;" />
+      <input_port name="latitude_deg" default="39.7555" type="double" />
+      <input_port name="longitude_deg" default="-105.2211" type="double" />
+      <input_port name="north_heading_deg" default="145" type="double" />
+      <input_port name="velocity_scale_factor" default="0.25" type="double" />
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="false" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

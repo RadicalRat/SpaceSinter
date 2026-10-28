@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Move To Scan Pose With Roll">
+  <BehaviorTree
+    ID="Move To Scan Pose With Roll"
+    _description="Moves ee_focal_point_link to {target_position} with the lens's current orientation rolled by {roll_xyzw} about the optical axis (focal frame +Z). Rolling about the optical axis keeps the lens on the sun, so this gives IK another way to reach a scan point. Call it right after aligning, while the current focal orientation is the sun orientation. Fails if the rolled pose cannot be planned or executed."
+    _favorite="false"
+    target_position="{target_position}"
+    target_header="{target_header}"
+    roll_xyzw="{roll_xyzw}"
+    velocity_scale_factor="{velocity_scale_factor}"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!--The roll is built in the focal frame because TransformPose rotates in the pose's header frame (world), not about the pose's own axes.-->
+      <Action
+        ID="CreatePoseStamped"
+        reference_frame="ee_focal_point_link"
+        position_xyz="0;0;0"
+        orientation_xyzw="{roll_xyzw}"
+        pose_stamped="{rolled_focal}"
+      />
+      <Action
+        ID="TransformPoseFrame"
+        input_pose="{rolled_focal}"
+        target_frame_id="world"
+        output_pose="{rolled_focal_world}"
+      />
+      <Action
+        ID="UnpackPoseStampedMessage"
+        pose_stamped="{rolled_focal_world}"
+        pose="{rolled_focal_msg}"
+      />
+      <Action
+        ID="UnpackPoseMessage"
+        pose="{rolled_focal_msg}"
+        orientation="{rolled_orientation}"
+      />
+      <!--Scan point position (raster path frame, world) with the rolled orientation.-->
+      <Action
+        ID="CreatePoseMessage"
+        position="{target_position}"
+        orientation="{rolled_orientation}"
+        pose="{rolled_target_msg}"
+      />
+      <Action
+        ID="CreatePoseStampedMessage"
+        header="{target_header}"
+        pose="{rolled_target_msg}"
+        pose_stamped="{rolled_target}"
+      />
+      <Action ID="VisualizePose" pose="{rolled_target}" marker_name="rolled_target" />
+      <SubTree
+        ID="Move to Pose"
+        _collapsed="true"
+        target_pose="{rolled_target}"
+        ik_frame="ee_focal_point_link"
+        velocity_scale_factor="{velocity_scale_factor}"
+        link_padding="0.01"
+        controller_names="joint_trajectory_admittance_controller"
+        controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        execution_pipeline="jtac"
+        planning_group_name="manipulator"
+        require_user_approval="false"
+        max_ik_solutions="8"
+        max_mtc_solutions="0"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Move To Scan Pose With Roll">
+      <input_port
+        name="target_position"
+        default="{target_position}"
+        type="geometry_msgs::msg::Point"
+      />
+      <input_port
+        name="target_header"
+        default="{target_header}"
+        type="std_msgs::msg::Header"
+      />
+      <input_port name="roll_xyzw" default="0;0;0;1" type="std::vector&lt;double&gt;" />
+      <input_port name="velocity_scale_factor" default="0.25" type="double" />
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="false" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

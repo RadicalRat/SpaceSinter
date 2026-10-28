@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Align Lens To Sun">
+  <BehaviorTree
+    ID="Align Lens To Sun"
+    _description="Closed loop: rotates the lens about the focal point until the sun is within {alignment_tolerance_rad} of the optical axis. Fails (abort) if the sun is lost or not aligned after {max_align_attempts} corrections. Outputs the aligned focal point pose in world."
+    _favorite="false"
+    alignment_tolerance_rad="{alignment_tolerance_rad}"
+    max_align_attempts="{max_align_attempts}"
+    velocity_scale_factor="{velocity_scale_factor}"
+    settle_time_s="{settle_time_s}"
+    aim_offset_x_rad="{aim_offset_x_rad}"
+    aim_offset_y_rad="{aim_offset_y_rad}"
+    aligned_focal_pose="{aligned_focal_pose}"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="Script" code="sun_aligned := false" />
+      <!--Each cycle measures, then corrects only if needed. Being aligned, losing the sun or a failed move all end the loop; sun_aligned tells them apart.-->
+      <Decorator ID="ForceSuccess">
+        <Decorator
+          ID="RepeatUnlessFailureEachTick"
+          num_cycles="{max_align_attempts}"
+        >
+          <Control ID="Sequence" name="Rotate lens to align to sun about focal point">
+            <SubTree
+              ID="Estimate Sun Alignment"
+              _collapsed="true"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_offset_x_rad}"
+              aim_offset_y_rad="{aim_offset_y_rad}"
+              alignment_error_rad="{alignment_error_rad}"
+              corrected_focal_pose="{corrected_focal_pose}"
+            />
+            <Action
+              ID="Script"
+              code="sun_aligned := alignment_error_rad &lt; alignment_tolerance_rad"
+            />
+            <Decorator ID="Precondition" if="!sun_aligned" else="FAILURE">
+              <SubTree
+                ID="Move to Pose"
+                _collapsed="true"
+                target_pose="{corrected_focal_pose}"
+                ik_frame="ee_focal_point_link"
+                velocity_scale_factor="{velocity_scale_factor}"
+                link_padding="0.01"
+                controller_names="joint_trajectory_admittance_controller"
+                controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+                execution_pipeline="jtac"
+                planning_group_name="manipulator"
+                require_user_approval="false"
+              />
+            </Decorator>
+          </Control>
+        </Decorator>
+      </Decorator>
+      <!--Alignment error < tolerance? Otherwise abort.-->
+      <Decorator ID="Precondition" if="sun_aligned" else="FAILURE">
+        <Control ID="Sequence" name="Record aligned focal pose">
+          <Action
+            ID="CreatePoseStamped"
+            reference_frame="ee_focal_point_link"
+            position_xyz="0;0;0"
+            orientation_xyzw="0;0;0;1"
+            pose_stamped="{focal_now}"
+          />
+          <Action
+            ID="TransformPoseFrame"
+            input_pose="{focal_now}"
+            target_frame_id="world"
+            output_pose="{aligned_focal_pose}"
+          />
+        </Control>
+      </Decorator>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Align Lens To Sun">
+      <input_port
+        name="alignment_tolerance_rad"
+        default="0.0035"
+        type="double"
+      />
+      <input_port name="max_align_attempts" default="8" type="int" />
+      <input_port name="velocity_scale_factor" default="0.25" type="double" />
+      <input_port name="settle_time_s" default="0.3" type="double" />
+      <input_port name="aim_offset_x_rad" default="0.0" type="double" />
+      <input_port name="aim_offset_y_rad" default="0.0" type="double" />
+      <output_port
+        name="aligned_focal_pose"
+        default="{aligned_focal_pose}"
+        type="geometry_msgs::msg::PoseStamped"
+      />
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="false" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

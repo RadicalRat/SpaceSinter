@@ -1,55 +1,52 @@
-image_width: 1920
-image_height: 1080
-camera_name: my_cameras
+# ROS2 camera calibration (sensor_msgs/CameraInfo format)
+# Converted from MATLAB cameraParameters (full precision)
+# Principal point shifted by -1 px (MATLAB is 1-based, ROS/OpenCV is 0-based).
+#
+# Active mode: 1280x720 MJPEG, 30 fps.  Not recalibrated: derived from the
+# 2320x1744 values below by registering frames of the same still scene taken
+# in both modes (ECC affine fit, repeatable to ~0.2 px).  The camera makes
+# 720p by scaling the 2320x1744 frame and cropping the centre rows:
+#   u_2320 = 1.8055 * u_720 + 3.69
+#   v_2320 = 1.8051 * v_720 + 220.11
+# so f_720 = f_2320 / scale and c_720 = (c_2320 - offset) / scale.
+# Distortion coefficients are in normalised coordinates, so they do not change.
+#
+# 2320x1744 MJPEG mode (2x2 binned full sensor, 30 fps), scaled from the
+# full-resolution calibration:
+#   f_bin = f_full / 2
+#   c_bin = (c_full - 0.5) / 2 - trim, trim = 4 px (x), 2 px (y): the binned
+#   2328x1748 frame trimmed to 2320x1744, assumed centred.
+#   camera_matrix: [1272.81964335, 0, 1174.00496359,
+#                   0, 1271.37605803, 928.15433257, 0, 0, 1]
+# If that trim is not centred, the principal point is off by up to ~0.003 rad
+# in either mode; recalibrate if alignment shows a bias.
+#
+# Full-resolution (4656x3496, 10 fps) calibration, for width/height 4656/3496:
+#   camera_matrix: [2545.63928669448, 0, 2356.50992717163,
+#                   0, 2542.75211605190, 1860.80866513345, 0, 0, 1]
+image_width: 1280
+image_height: 720
+camera_name: camera # must match the camera_name your driver uses
 camera_matrix:
   rows: 3
   cols: 3
-  data:
-  - 1421.9479938722936
-  - 0.0
-  - 970.441979007635
-  - 0.0
-  - 1419.3236659814756
-  - 543.7599123574774
-  - 0.0
-  - 0.0
-  - 1.0
+  data: [704.9680, 0.0, 648.1944,
+         0.0, 704.3244, 392.2466,
+         0.0, 0.0, 1.0]
 distortion_model: plumb_bob
 distortion_coefficients:
   rows: 1
   cols: 5
-  data:
-  - 0.04493198190789422
-  - -0.19770092882368792
-  - 0.0024846689517225217
-  - 0.0014217552460464241
-  - 0.12549033894282177
+  data: [-0.296512624656701, 0.104705717692722, 0.0, 0.0, 0.0] # [k1, k2, p1, p2, k3]
 rectification_matrix:
   rows: 3
   cols: 3
-  data:
-  - 1.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 1.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 1.0
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
 projection_matrix:
   rows: 3
   cols: 4
-  data:
-  - 1421.9479938722936
-  - 0.0
-  - 970.441979007635
-  - 0.0
-  - 0.0
-  - 1419.3236659814756
-  - 543.7599123574774
-  - 0.0
-  - 0.0
-  - 0.0
-  - 1.0
-  - 0.0
+  data: [704.9680, 0.0, 648.1944, 0.0,
+         0.0, 704.3244, 392.2466, 0.0,
+         0.0, 0.0, 1.0, 0.0]

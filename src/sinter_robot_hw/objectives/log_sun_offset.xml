@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Log Sun Offset">
+  <BehaviorTree
+    ID="Log Sun Offset"
+    _description="Aim offset calibration. Does not move the robot. Teleop the lens until the focused spot on cardboard is smallest and roundest, then run this: it logs where the sun sits in the sun camera image (vx, vy, relative to the image center). Put those numbers in Estimate Sun Alignment's SunPoseFinder as aim_offset_x_rad = vx and aim_offset_y_rad = vy."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="GetImage" topic_name="/camera/image_raw" />
+      <Action ID="GetCameraInfo" topic_name="/camera/camera_info" />
+      <Action
+        ID="SunPoseFinder"
+        image="{image}"
+        camera_info="{camera_info}"
+        cameraOrientation="{sun_correction}"
+        output_image="{out_image}"
+        alignment_error_rad="{alignment_error_rad}"
+        aim_offset_x_rad="0.0"
+        aim_offset_y_rad="0.0"
+      />
+      <Action
+        ID="SaveImageToFile"
+        image="{out_image}"
+        file_path="."
+        file_prefix="sun_offset"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Log Sun Offset">
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

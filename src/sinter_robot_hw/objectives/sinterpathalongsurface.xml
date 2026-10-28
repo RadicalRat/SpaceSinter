@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <root BTCPP_format="4" main_tree_to_execute="SinterPathAlongSurface">
-  <!-- ////////// -->
   <BehaviorTree
     ID="SinterPathAlongSurface"
     _description="Combine the plan path along surface and track blob to sinter a path along a 3D pointcloud contour"
     _favorite="false"
   >
-    Control ID="Sequence" name="TopLevelSequence">
+    <Control ID="Sequence" name="TopLevelSequence">
       <SubTree
         ID="Move to Waypoint"
         _collapsed="true"
         waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
       />
       <SubTree ID="Clear Snapshot" _collapsed="true" />
       <!--Get Point cloud scan and crop. Send to UI-->
@@ -28,7 +37,7 @@
       <Action
         ID="CreateStampedPose"
         stamped_pose="{crop_pose}"
-        position_xyz="0;-1.1;0;"
+        position_xyz="0;-0.65;0;"
         orientation_xyzw="-1.000; 0.000; -0.000; 0.000"
       />
       <Action
@@ -67,7 +76,21 @@
         hull_alpha="-1.0"
       />
       <Control ID="Sequence" name="move to home, find sun orientation">
-        <SubTree ID="Move to Waypoint" waypoint_name="Sun_Scan" />
+        <SubTree
+          ID="Move to Waypoint"
+          _collapsed="true"
+          waypoint_name="Home"
+          acceleration_scale_factor="1.0"
+          controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+          controller_names="joint_trajectory_admittance_controller"
+          execution_pipeline="jtac"
+          joint_group_name="manipulator"
+          keep_orientation="false"
+          keep_orientation_tolerance="0.05"
+          link_padding="0.01"
+          seed="0"
+          velocity_scale_factor="1.0"
+        />
         <SubTree ID="TrackBlob" _collapsed="true" />
         <Action
           ID="CreateStampedPose"
@@ -151,6 +174,13 @@
           ik_frame="ee_focal_point_link"
           velocity_scale_factor="0.75"
           link_padding="0.01"
+          controller_names="joint_trajectory_admittance_controller"
+          controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+          execution_pipeline="jtac"
+          max_ik_solutions="8"
+          max_mtc_solutions="0"
+          planning_group_name="manipulator"
+          require_user_approval="false"
         />
         <Decorator ID="RetryUntilSuccessful" num_attempts="3">
           <Action
@@ -170,9 +200,22 @@
           joint_trajectory_msg="{sinter_trajectory}"
         />
       </Control>
-      <SubTree ID="Move to Waypoint" waypoint_name="Scan_Initial" />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
     </Control>
-
   </BehaviorTree>
   <TreeNodesModel>
     <SubTree ID="SinterPathAlongSurface">

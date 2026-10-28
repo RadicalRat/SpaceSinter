@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Reset Sun To Camera">
+  <BehaviorTree
+    ID="Reset Sun To Camera"
+    _description="Simulation only: moves the simulated sun to just off the sun camera's current optical axis (by the sim_sun_camera initial_offset_deg parameter; set it to [0, 0] to centre it). Does not move the robot."
+    _favorite="true"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action
+        ID="CallTriggerService"
+        service_name="/sim_sun_camera/place_sun_in_view"
+        response_timeout="3.0"
+        wait_for_server_available_timeout="3.0"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Reset Sun To Camera">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Simulation" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

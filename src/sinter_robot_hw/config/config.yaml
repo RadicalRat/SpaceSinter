@@ -1,7 +1,7 @@
 based_on_package: sinter_robot_mock
 objectives:
   objective_library_paths:
-    example_objective:
+    sinter_hw_objectives:
       package_name: "sinter_robot_hw"
       relative_path: "objectives"
 

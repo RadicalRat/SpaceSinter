@@ -102,13 +102,16 @@
       <origin xyz="0.072 0.03 -0.105" rpy="-1.5708 0 1.5708"/>
     </joint>
 
-    <!-- Optical frame (REP-103 optical: +Z out of the lens). Virtual frame. -->
+    <!-- Optical frame (REP-103 optical: +Z out of the lens, +X image right, +Y image down). Virtual frame.
+         Verified 2026-10-27 against the real sun: the sun's elevation from its pixel matched the ephemeris and
+         its drift over 4 min matched the predicted image direction only with this orientation (it was 180 deg
+         off about +Z before, which sent sun corrections the wrong way).  Its axes now match ee_focal_point_link. -->
     <link name="ee_camera_optical_link"/>
 
     <joint name="ee_camera_optical_joint" type="fixed">
       <parent link="ee_camera_link"/>
       <child link="ee_camera_optical_link"/>
-      <origin xyz="0.016975 0 0" rpy="-1.5708 0 -1.5708"/>
+      <origin xyz="0.016975 0 0" rpy="1.5708 0 1.5708"/>
     </joint>
 
     <!-- ========================================== -->
@@ -121,18 +124,25 @@
       realsense_driver/config/realsense_color.yaml) and publishes its sensor/optical frames
       (e.g. ee_realsense_depth_optical_frame) under it. Follows the RealSense camera_link
       convention: origin on the left IR imager, +X out of the glass, +Y toward the camera's
-      left (the body extends toward -Y), +Z up.
+      left (the body extends toward -Y), +Z up, away from the 1/4-20 mounting hole on the
+      bottom of the body.
+      The exported frame had +Z toward the mounting hole (upside down), so the joint rolls it
+      180 deg about X and the mesh, collision and inertial origins roll back by 180 deg so the
+      body stays put on the bracket.
+      The exported origin was also on the right IR imager; the joint moves it 55 mm (D415 stereo
+      baseline) to the left imager along +Y, and the mesh, collision and inertial origins move
+      back by 55 mm so the body does not move.
     -->
     <link name="ee_realsense_link">
       <inertial>
-        <origin xyz="-0.0089165 -0.018936 -7.84E-05" rpy="0 0 0"/>
+        <origin xyz="-0.0089165 -0.036064 7.84E-05" rpy="0 0 0"/>
         <mass value="0.072"/>
         <inertia ixx="6.198E-05" ixy="0" ixz="0"
                  iyy="5.574E-06" iyz="0"
                  izz="6.121E-05"/>
       </inertial>
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 -0.055 0" rpy="${PI} 0 0"/>
         <geometry>
           <mesh filename="${mesh_dir}/realsense_link.STL"/>
         </geometry>
@@ -141,7 +151,7 @@
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 -0.055 0" rpy="${PI} 0 0"/>
         <geometry>
           <mesh filename="${mesh_dir}/realsense_link.STL"/>
         </geometry>
@@ -151,7 +161,7 @@
     <joint name="ee_realsense_joint" type="fixed">
       <parent link="ee_end_effector_link"/>
       <child link="ee_realsense_link"/>
-      <origin xyz="0.031 0.02 0.14495" rpy="0 -1.5708 0"/>
+      <origin xyz="0.031 -0.035 0.14495" rpy="${PI} -1.5708 0"/>
     </joint>
 
     <!-- ========================================== -->
@@ -164,8 +174,11 @@
     <joint name="ee_focal_point_joint" type="fixed">
       <parent link="ee_end_effector_link"/>
       <child link="ee_focal_point_link"/>
-      <!-- CAD rpy is (1.5708 1.5708 0); extra 180 deg roll keeps +Z toward the lens -->
-      <origin xyz="0.27718 -0.39258 0" rpy="-1.5708 1.5708 0"/>
+      <!-- CAD rpy is (1.5708 1.5708 0); extra 180 deg roll keeps +Z toward the lens.
+           y is 30 mm closer to the lens than the CAD focal point (-0.39258, 0.400 m from the lens center): tuned
+           2026-10-28 in the real sun (cardboard test: -3 cm; another -1 cm looked worse; the old
+           objectives' "Sinter Fine Tuning" lowered every target 3 cm for the same reason). -->
+      <origin xyz="0.27718 -0.36258 0" rpy="-1.5708 1.5708 0"/>
     </joint>
 
   </xacro:macro>

@@ -20,6 +20,8 @@
         camera_info="{camera_info}"
         cameraOrientation="{est}"
         output_image="{out_image}"
+        aim_offset_y_rad="0"
+        aim_offset_x_rad="0"
       />
       <Action
         ID="SaveImageToFile"
@@ -49,18 +51,21 @@
         />
         <SubTree
           ID="AddToVector"
+          _collapsed="true"
           element="{y}"
           input_vector="{quaternion_adjust}"
           output_vector="{quaternion_adjust}"
         />
         <SubTree
           ID="AddToVector"
+          _collapsed="true"
           element="{z}"
           input_vector="{quaternion_adjust}"
           output_vector="{quaternion_adjust}"
         />
         <SubTree
           ID="AddToVector"
+          _collapsed="true"
           element="{w}"
           input_vector="{quaternion_adjust}"
           output_vector="{quaternion_adjust}"
@@ -123,10 +128,10 @@
           />
           <Action
             ID="TransformPose"
+            _skipIf="true"
             input_pose="{target_pose}"
             output_pose="{target_pose}"
             translation_xyz="0;0;0.05"
-            _skipIf="true"
           />
         </Control>
       </Control>
@@ -136,6 +141,8 @@
         _collapsed="true"
         tf_frame_name="ee_focal_point_link"
         marker_name="focal_point"
+        marker_lifetime="0.0"
+        marker_size="0.1"
       />
       <SubTree
         ID="Move to Pose"
@@ -145,6 +152,12 @@
         require_user_approval="false"
         velocity_scale_factor="0.25"
         controller_names="joint_trajectory_admittance_controller"
+        controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        execution_pipeline="jtac"
+        link_padding="0.01"
+        max_ik_solutions="8"
+        max_mtc_solutions="0"
+        planning_group_name="manipulator"
       />
       <Control ID="Sequence" _skipIf="true">
         <Action
@@ -155,11 +168,11 @@
         <Action ID="SetupMTCCurrentState" />
         <Action
           ID="SetupMTCConnectWithProRRT"
+          _skipIf="true"
           acceleration_scale_factor="1.000000"
           keep_orientation_link_names="ee_focal_point_link"
           link_padding="0.01"
           max_iterations="10000"
-          _skipIf="true"
         />
         <Action
           ID="SetupMTCPlanToPose"
@@ -176,6 +189,11 @@
     </Control>
   </BehaviorTree>
   <TreeNodesModel>
-    <SubTree ID="TrackBlob" />
+    <SubTree ID="TrackBlob">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="" />
+      </MetadataFields>
+    </SubTree>
   </TreeNodesModel>
 </root>

@@ -1,0 +1,10 @@
+# Real arm, simulated sun camera.
+# Everything (URDF with the physical ros2_control hardware, controllers,
+# objectives) comes from sinter_robot_hw; only the sun camera is swapped for
+# the sim_sun_camera node from sinter_robot_mock.
+based_on_package: sinter_robot_hw
+
+hardware:
+  robot_driver_persist_launch_file:
+    package: "sinter_robot_hw_testing"
+    path: "launch/testing_nodes.launch.py"

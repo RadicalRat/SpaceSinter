@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Estimate Sun Alignment">
+  <BehaviorTree
+    ID="Estimate Sun Alignment"
+    _description="Grabs a sun camera frame, finds the sun blob and outputs how far the lens is off the sun ({alignment_error_rad}) and the focal point pose in world that would put the sun on the optical axis ({corrected_focal_pose}). Does not move the robot. Waits {settle_time_s} first so the frame is taken after the arm has stopped. Fails if no sun is found."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!--Let the arm settle and the camera expose a frame taken after the last move, so the image is not of the old pose.-->
+      <Action ID="WaitForDuration" delay_duration="{settle_time_s}" />
+      <!--OpenCV blob tracking-->
+      <Action
+        ID="GetImage"
+        topic_name="/camera/image_raw"
+        message_out="{image}"
+        message_timeout_sec="5.000000"
+      />
+      <Action
+        ID="GetCameraInfo"
+        topic_name="/camera/camera_info"
+        message_out="{camera_info}"
+        message_timeout_sec="5.000000"
+      />
+      <!--Aim offset: where the sun sits in the sun camera image (rad from the image center) when the lens itself is on the sun, because the camera is not exactly parallel to the lens. Set by the caller; calibrate with the Calibrate Aim Offset objective.-->
+      <Action
+        ID="SunPoseFinder"
+        image="{image}"
+        camera_info="{camera_info}"
+        cameraOrientation="{sun_correction}"
+        output_image="{out_image}"
+        alignment_error_rad="{alignment_error_rad}"
+        aim_offset_x_rad="{aim_offset_x_rad}"
+        aim_offset_y_rad="{aim_offset_y_rad}"
+      />
+      <!--Estimated sun pose: the correction rotation applied about the focal point. SunPoseFinder's rotation is in the camera optical frame, whose axes match the focal frame, so it is used as-is.-->
+      <Action
+        ID="CreatePoseStamped"
+        reference_frame="ee_focal_point_link"
+        position_xyz="0;0;0"
+        orientation_xyzw="0;0;0;1"
+        pose_stamped="{focal_identity}"
+      />
+      <Action
+        ID="UnpackPoseStampedMessage"
+        pose_stamped="{focal_identity}"
+        header="{focal_header}"
+        pose="{focal_identity_pose}"
+      />
+      <Action
+        ID="UnpackPoseMessage"
+        pose="{focal_identity_pose}"
+        position="{focal_origin}"
+      />
+      <Action
+        ID="CreatePoseMessage"
+        position="{focal_origin}"
+        orientation="{sun_correction}"
+        pose="{correction_pose}"
+      />
+      <Action
+        ID="CreatePoseStampedMessage"
+        header="{focal_header}"
+        pose="{correction_pose}"
+        pose_stamped="{correction_pose_stamped}"
+      />
+      <!--Express it in world right away: the focal frame moves with the arm.-->
+      <Action
+        ID="TransformPoseFrame"
+        input_pose="{correction_pose_stamped}"
+        target_frame_id="world"
+        output_pose="{corrected_focal_pose}"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Estimate Sun Alignment">
+      <MetadataFields>
+        <Metadata runnable="false" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+      <inout_port name="settle_time_s" default="0.3" type="double" />
+      <input_port name="aim_offset_x_rad" default="0.0" type="double" />
+      <input_port name="aim_offset_y_rad" default="0.0" type="double" />
+      <inout_port
+        name="alignment_error_rad"
+        default="{alignment_error_rad}"
+        type="double"
+      />
+      <inout_port
+        name="corrected_focal_pose"
+        default="{corrected_focal_pose}"
+        type="geometry_msgs::msg::PoseStamped"
+      />
+    </SubTree>
+  </TreeNodesModel>
+</root>

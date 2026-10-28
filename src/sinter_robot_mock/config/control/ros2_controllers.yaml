@@ -107,8 +107,13 @@ joint_velocity_controller:
       - 2.0
       - 2.0
       - 2.0
+    # Position (not velocity), as in PickNik's reference configs: JVC then
+    # claims the same interfaces as JTAC, so ros2_control makes them mutually
+    # exclusive and MoveIt Pro swaps them when switching between jogging and
+    # trajectories.  With velocity, both stayed active after jogging and the
+    # mock hardware ignored JTAC's position commands (path tolerance aborts).
     command_interfaces:
-      - velocity
+      - position
     state_interfaces:
       - position
       - velocity

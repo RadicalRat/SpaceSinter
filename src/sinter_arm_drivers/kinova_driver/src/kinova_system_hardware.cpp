@@ -19,10 +19,12 @@
 //
 // ── Joint conventions ─────────────────────────────────────────────────────────
 // URDF joint order must match actuator order (joint_1 → Actuator1, ...).
-// Joints 1,4,5,6 are continuous: reported in (−π, π] to match MoveIt, and the
-// P-controller takes the shortest path around the circle (JTC must use
-// angle_wraparound: true).  Joints 2,3 are revolute with limits inside
-// (0, 2π) and are reported in the firmware's native range.
+// Joints 1,4,5,6 are continuous: seeded in (−π, π] on activation, then
+// unwrapped every I/O cycle so the reported position never jumps by 2π at the
+// ±π seam (JTAC has no angle_wraparound and aborts on the jump).  The
+// P-controller takes the shortest path around the circle.  Joints 2,3 are
+// revolute with limits inside (0, 2π) and are reported in the firmware's
+// native range.
 //
 // ── USB setup (host, run once before first use) ───────────────────────────────
 //   sudo cp <pkg>/udev/10-kinova-arm.rules /etc/udev/rules.d/
@@ -675,7 +677,8 @@ void KinovaSystemHardware::ioLoop()
     //    below.  Never feed a zero-initialised struct forward as real data.
     if (int rc = sdk_->getJointPositionsDeg(raw); KinovaSdk::ok(rc)) {
       for (size_t i = 0; i < kNumJoints; ++i) {
-        state.positions[i] = kinovaPositionToRad(raw[i], kContinuous[i]);
+        const double rad = kinovaPositionToRad(raw[i], kContinuous[i]);
+        state.positions[i] = kContinuous[i] ? unwrapAngle(state.positions[i], rad) : rad;
       }
     } else {
       cycle_ok = false;

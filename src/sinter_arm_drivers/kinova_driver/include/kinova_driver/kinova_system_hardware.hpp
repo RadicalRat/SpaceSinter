@@ -129,7 +129,7 @@ private:
   /// I/O thread → controller_manager thread.
   struct SensorFrame
   {
-    JointArray positions{};   ///< rad; continuous joints in (−π, π]
+    JointArray positions{};   ///< rad; continuous joints unwrapped from their (−π, π] start
     JointArray velocities{};  ///< rad/s
     JointArray efforts{};     ///< N·m gravity-free
   };

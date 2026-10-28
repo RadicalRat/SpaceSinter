@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+  <include
+    file="$(find-pkg-share moveit_studio_agent)/launch/studio_agent_bridge.launch.xml"
+  />
+  <!-- No sun_camera_driver: sim_sun_camera (launch/testing_nodes.launch.py)
+       publishes /camera/image_raw instead.  The RealSense is still real. -->
+  <include
+    file="$(find-pkg-share realsense_driver)/launch/realsense_camera.launch.py"
+  />
+
+</launch>

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <behaviortree_cpp/action_node.h>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <moveit_pro_behavior_interface/get_required_ports.hpp>
+#include <rclcpp/publisher.hpp>
 
 // This header includes the SharedResourcesNode type
 #include <moveit_pro_behavior_interface/shared_resources_node.hpp>
@@ -47,6 +49,11 @@ public:
    * @details This function is where the Behavior performs its work when the behavior tree is being run. Since SunPoseFinder is derived from BT::SyncActionNode, it is very important that its tick() function always finishes very quickly. If tick() blocks before returning, it will block execution of the entire behavior tree, which may have undesirable consequences for other Behaviors that require a fast update rate to work correctly.
    */
   BT::NodeStatus tick() override;
-  
+
+private:
+  // Every sun check is published on /sinter/sun_error so rosbags record the pointing error as the controller sees it:
+  // x, y = tan of the sun's angle from the aim point along image +x / +y (aim offset already removed), z = alignment
+  // error in rad. Stamped with the image header. All NaN when no blob is found.
+  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr sun_error_pub_;
 };
 }  // namespace sun_pose_finder

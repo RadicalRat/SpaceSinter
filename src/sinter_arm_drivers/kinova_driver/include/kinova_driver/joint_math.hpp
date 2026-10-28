@@ -47,6 +47,15 @@ inline double kinovaPositionToRad(float raw_deg, bool continuous)
   return continuous ? wrapToPi(rad) : rad;
 }
 
+/// Continue a continuous joint's angle across the ±π seam: `prev` (unwrapped)
+/// moved by the shortest step to `wrapped`.  Keeps the reported position
+/// free of 2π jumps, which JTAC (no angle_wraparound) would read as a huge
+/// path deviation.  Assumes the joint turns less than π between samples.
+inline double unwrapAngle(double prev, double wrapped)
+{
+  return std::isfinite(prev) ? prev + wrapToPi(wrapped - prev) : wrapped;
+}
+
 /// Convert a raw GetAngularVelocity reading to rad/s.
 ///
 /// Two firmware quirks are corrected here:

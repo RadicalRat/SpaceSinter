@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Raster Reachable With Roll">
+  <BehaviorTree
+    ID="Raster Reachable With Roll"
+    _description="Checks, without moving, that ee_focal_point_link can reach every pose in {raster_path} with the lens's current orientation rolled by {roll_xyzw} about its optical axis (focal frame +Z). Call it right after aligning, while the current focal orientation is the sun orientation: the raster keeps one orientation, so one roll has to work for every point. Solves IK against {planning_scene_msg} (collisions included). Succeeds only if every point solves; outputs that orientation in world as {rolled_orientation}."
+    _favorite="false"
+    raster_path="{raster_path}"
+    roll_xyzw="{roll_xyzw}"
+    planning_scene_msg="{planning_scene_msg}"
+    rolled_orientation="{rolled_orientation}"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!--The roll is built in the focal frame because TransformPose rotates in the pose's header frame (world), not about the pose's own axes.-->
+      <Action
+        ID="CreatePoseStamped"
+        reference_frame="ee_focal_point_link"
+        position_xyz="0;0;0"
+        orientation_xyzw="{roll_xyzw}"
+        pose_stamped="{rolled_focal}"
+      />
+      <Action
+        ID="TransformPoseFrame"
+        input_pose="{rolled_focal}"
+        target_frame_id="world"
+        output_pose="{rolled_focal_world}"
+      />
+      <Action
+        ID="UnpackPoseStampedMessage"
+        pose_stamped="{rolled_focal_world}"
+        pose="{rolled_focal_msg}"
+      />
+      <Action
+        ID="UnpackPoseMessage"
+        pose="{rolled_focal_msg}"
+        orientation="{rolled_orientation}"
+      />
+      <Decorator
+        ID="ForEach"
+        vector_in="{raster_path}"
+        index="{index}"
+        out="{waypoint}"
+      >
+        <Control ID="Sequence" name="IK for this waypoint">
+          <Action
+            ID="UnpackPoseStampedMessage"
+            pose_stamped="{waypoint}"
+            header="{waypoint_header}"
+            pose="{waypoint_pose}"
+          />
+          <Action
+            ID="UnpackPoseMessage"
+            pose="{waypoint_pose}"
+            position="{waypoint_position}"
+          />
+          <Action
+            ID="CreatePoseMessage"
+            position="{waypoint_position}"
+            orientation="{rolled_orientation}"
+            pose="{ik_target_msg}"
+          />
+          <Action
+            ID="CreatePoseStampedMessage"
+            header="{waypoint_header}"
+            pose="{ik_target_msg}"
+            pose_stamped="{ik_target}"
+          />
+          <Action ID="ResetPoseStampedVector" vector="{ik_targets}" />
+          <Action
+            ID="AddPoseStampedToVector"
+            input="{ik_target}"
+            vector="{ik_targets}"
+          />
+          <Action
+            ID="ComputeInverseKinematics"
+            target_poses="{ik_targets}"
+            tip_links="ee_focal_point_link"
+            planning_scene_msg="{planning_scene_msg}"
+            planning_group_name="manipulator"
+            ik_timeout_s="0.2"
+            link_padding="0.01"
+            solution="{ik_solution}"
+          />
+        </Control>
+      </Decorator>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Raster Reachable With Roll">
+      <input_port
+        name="raster_path"
+        default="{raster_path}"
+        type="std::vector&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;, std::allocator&lt;geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt; &gt; &gt;"
+      />
+      <input_port name="roll_xyzw" default="0;0;0;1" type="std::vector&lt;double&gt;" />
+      <input_port
+        name="planning_scene_msg"
+        default="{planning_scene_msg}"
+        type="moveit_msgs::msg::PlanningScene"
+      />
+      <output_port
+        name="rolled_orientation"
+        default="{rolled_orientation}"
+        type="geometry_msgs::msg::Quaternion"
+      />
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="false" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>
