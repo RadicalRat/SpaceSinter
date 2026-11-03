@@ -31,6 +31,16 @@ TEST(SolarPosition, MorningSunIsInTheEast)
   EXPECT_GT(sun.elevation_deg, 20.0);
 }
 
+TEST(SolarPosition, DirectionFollowsNorthHeading)
+{
+  // Sun due south at 30 deg elevation, with +Y pointing north: the sun is toward -Y.
+  const Eigen::Vector3d dir = sunDirection({ 180.0, 30.0 }, 90.0);
+  EXPECT_NEAR(dir.x(), 0.0, 1e-9);
+  EXPECT_NEAR(dir.y(), -std::cos(M_PI / 6.0), 1e-9);
+  EXPECT_NEAR(dir.z(), 0.5, 1e-9);
+  EXPECT_NEAR(dir.norm(), 1.0, 1e-9);
+}
+
 TEST(FitPlaneRaster, TiltedRectangle)
 {
   // 0.10 x 0.04 m grid on a plane tilted 30 deg about X.
@@ -143,6 +153,57 @@ TEST(FitPlaneRaster, StaysOnRotatedSquare)
   {
     const Eigen::Vector3d in_square = yaw.inverse() * pose.translation();
     EXPECT_LE(in_square.head<2>().cwiseAbs().maxCoeff(), 0.10 + 0.005 + 1e-9);
+  }
+}
+
+TEST(FitPlaneRaster, ExtremesBoundTheRaster)
+{
+  // Rectangle: the extremes are just its 4 corners (the ends of the first and last lines).
+  std::vector<Eigen::Vector3d> rect;
+  for (double x = -0.04; x <= 0.04 + 1e-9; x += 0.002)
+  {
+    for (double y = -0.01; y <= 0.01 + 1e-9; y += 0.002)
+    {
+      rect.emplace_back(x, y, 0.0);
+    }
+  }
+  const auto flat = fitPlaneRaster(rect, 0.01, 0.0, 0.0, 0.0, 4);
+  ASSERT_TRUE(flat.has_value()) << flat.error();
+  EXPECT_EQ(flat->extremes, (std::vector<size_t>{ 0, 4, 10, 14 }));
+
+  // Rotated square: the middle lines stick out past the first and last lines, so the extremes add the line ends that
+  // reach farthest along the scan direction. Every waypoint then lies within the extremes' (u, v) bounds.
+  const Eigen::AngleAxisd yaw(M_PI / 6.0, Eigen::Vector3d::UnitZ());
+  std::vector<Eigen::Vector3d> points;
+  for (double x = -0.10; x <= 0.10 + 1e-9; x += 0.002)
+  {
+    for (double y = -0.10; y <= 0.10 + 1e-9; y += 0.002)
+    {
+      points.push_back(yaw * Eigen::Vector3d(x, y, 0.1));
+    }
+  }
+  const auto raster = fitPlaneRaster(points, 0.01, 0.0, 0.0, 0.0, 10);
+  ASSERT_TRUE(raster.has_value()) << raster.error();
+  ASSERT_GE(raster->extremes.size(), 4u);
+  ASSERT_LE(raster->extremes.size(), 6u);
+  const Eigen::Matrix3d axes = raster->plane.linear();
+  auto uv = [&](size_t i) -> Eigen::Vector2d {
+    return (axes.transpose() * (raster->poses[i].translation() - raster->plane.translation())).head<2>();
+  };
+  Eigen::Vector2d lo = Eigen::Vector2d::Constant(1e9);
+  Eigen::Vector2d hi = Eigen::Vector2d::Constant(-1e9);
+  for (const size_t i : raster->extremes)
+  {
+    ASSERT_LT(i, raster->poses.size());
+    lo = lo.cwiseMin(uv(i));
+    hi = hi.cwiseMax(uv(i));
+  }
+  for (size_t i = 0; i < raster->poses.size(); ++i)
+  {
+    EXPECT_GE(uv(i).x(), lo.x() - 1e-9);
+    EXPECT_LE(uv(i).x(), hi.x() + 1e-9);
+    EXPECT_GE(uv(i).y(), lo.y() - 1e-9);
+    EXPECT_LE(uv(i).y(), hi.y() + 1e-9);
   }
 }
 

@@ -21,6 +21,8 @@ struct PlaneRaster
   double rms_m;                          // RMS distance of the inliers from the fitted plane
   size_t num_inliers;                    // points used for the fit and the raster extent
   size_t num_outliers;                   // points dropped as farther than `outlier_distance` from the plane
+  std::vector<size_t> extremes;          // indices into `poses`: the ends of the first and last lines, plus the
+                                         // line ends farthest out along the scan direction (at most 6, sorted)
 };
 
 /**

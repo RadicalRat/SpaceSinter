@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include <Eigen/Core>
+
 namespace sun_pose_finder
 {
 struct SolarPosition
@@ -56,5 +58,18 @@ inline SolarPosition computeSolarPosition(double unix_time_s, double latitude_de
                          180.0;
 
   return { std::fmod(azimuth + 360.0, 360.0), 90.0 - zenith / kDeg };
+}
+
+/**
+ * @brief Unit vector toward the sun in a frame with +Z up.
+ * @param north_heading_deg Direction of true north in that frame, degrees counter-clockwise about +Z from +X.
+ */
+inline Eigen::Vector3d sunDirection(const SolarPosition& sun, double north_heading_deg)
+{
+  constexpr double kDeg = M_PI / 180.0;
+  // Azimuth is clockwise from north; frame angles are counter-clockwise from +X.
+  const double heading = (north_heading_deg - sun.azimuth_deg) * kDeg;
+  const double elevation = sun.elevation_deg * kDeg;
+  return { std::cos(elevation) * std::cos(heading), std::cos(elevation) * std::sin(heading), std::sin(elevation) };
 }
 }  // namespace sun_pose_finder

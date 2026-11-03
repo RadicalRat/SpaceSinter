@@ -17,4 +17,13 @@ def generate_launch_description():
     # Solar flux from NREL SRRL (Golden), once a minute, so every rosbag has the DNI for the trial.
     srrl_irradiance_node = Node(package="srrl_irradiance", executable="srrl_irradiance_node", output="screen")
 
-    return LaunchDescription([srrl_irradiance_node])
+    # Ephemeris sun direction at 1 Hz, plus the solar incidence angle on the last fitted bed plane.
+    # Keep north_heading_deg equal to the north_heading_deg tunable in sinter_raster_closed_loop.xml.
+    sun_ephemeris_node = Node(
+        package="sun_pose_finder",
+        executable="sun_ephemeris_node",
+        output="screen",
+        parameters=[{"latitude_deg": 39.7555, "longitude_deg": -105.2211, "north_heading_deg": 125.0}],
+    )
+
+    return LaunchDescription([srrl_irradiance_node, sun_ephemeris_node])

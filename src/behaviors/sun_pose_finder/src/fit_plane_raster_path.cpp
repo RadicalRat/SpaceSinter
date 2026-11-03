@@ -186,8 +186,14 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
   }
 
   PlaneRaster result{ plane, {}, std::sqrt(std::max(0.0, solver.eigenvalues()(0))), points.size(),
-                      all_points.size() - points.size() };
+                      all_points.size() - points.size(), {} };
   int lines_used = 0;
+  // Index of each kept line's lo-u and hi-u end in `poses`, for the extremes.
+  std::vector<std::pair<size_t, size_t>> line_ends;
+  double lowest_lo = std::numeric_limits<double>::max();
+  double highest_hi = -std::numeric_limits<double>::max();
+  size_t lowest_lo_index = 0;
+  size_t highest_hi_index = 0;
   for (int line = 0; line < num_lines; ++line)
   {
     const double lo = std::max(u_min, line_u_min[line] + edge_margin);
@@ -201,15 +207,36 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
         std::max(line_subdivisions,
                  point_spacing > 0.0 ? static_cast<int>(std::ceil((hi - lo) / point_spacing - 1e-9)) : 1);
     const double v_line = v_min + line * line_spacing;
+    const size_t first = result.poses.size();
+    const size_t last = first + segments_per_line;
+    const bool forward = lines_used % 2 == 0;  // forward lines start at lo
+    line_ends.emplace_back(forward ? first : last, forward ? last : first);
+    if (lo < lowest_lo)
+    {
+      lowest_lo = lo;
+      lowest_lo_index = line_ends.back().first;
+    }
+    if (hi > highest_hi)
+    {
+      highest_hi = hi;
+      highest_hi_index = line_ends.back().second;
+    }
     for (int k = 0; k <= segments_per_line; ++k)
     {
       const double frac = static_cast<double>(k) / segments_per_line;
-      const double u_pt = lines_used % 2 == 0 ? lo + frac * (hi - lo) : hi - frac * (hi - lo);
+      const double u_pt = forward ? lo + frac * (hi - lo) : hi - frac * (hi - lo);
       Eigen::Isometry3d pose = plane;
       pose.translation() = centroid + u_pt * u + v_line * v;
       result.poses.push_back(pose);
     }
     ++lines_used;
+  }
+  if (!line_ends.empty())
+  {
+    result.extremes = { line_ends.front().first, line_ends.front().second, line_ends.back().first,
+                        line_ends.back().second,  lowest_lo_index,          highest_hi_index };
+    std::sort(result.extremes.begin(), result.extremes.end());
+    result.extremes.erase(std::unique(result.extremes.begin(), result.extremes.end()), result.extremes.end());
   }
   return result;
 }
@@ -255,6 +282,10 @@ BT::PortsList FitPlaneRasterPath::providedPorts()
                                                     "Fitted plane: centroid, X along scan lines, Z along normal."),
     BT::OutputPort<double>("tilt_deg", "{bed_tilt_deg}", "Tilt of the plane normal from +Z of the cloud's frame."),
     BT::OutputPort<int>("num_waypoints", "{num_waypoints}", "N: number of waypoints in the path."),
+    BT::OutputPort<std::vector<geometry_msgs::msg::PoseStamped>>(
+        "extremes", "{raster_extremes}",
+        "The outermost waypoints of `path` (both ends of the first and last scan lines, plus the line ends farthest "
+        "out along the scan direction; at most 6). Enough for a quick reachability check of the whole raster."),
   };
 }
 
@@ -340,6 +371,12 @@ BT::NodeStatus FitPlaneRasterPath::tick()
   setOutput("path", path);
   setOutput("plane_pose", plane_pose);
   setOutput("num_waypoints", static_cast<int>(path.size()));
+  std::vector<geometry_msgs::msg::PoseStamped> extremes;
+  for (const size_t i : raster->extremes)
+  {
+    extremes.push_back(path[i]);
+  }
+  setOutput("extremes", extremes);
   setOutput("tilt_deg", tilt_deg);
   shared_resources_->logger->publishInfoMessage(
       kLogSource, fmt::format("Fitted plane to {}; raster has {} waypoints", fit_summary, path.size()));

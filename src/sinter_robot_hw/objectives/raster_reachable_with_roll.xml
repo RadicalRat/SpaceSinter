@@ -2,7 +2,7 @@
 <root BTCPP_format="4" main_tree_to_execute="Raster Reachable With Roll">
   <BehaviorTree
     ID="Raster Reachable With Roll"
-    _description="Checks, without moving, that ee_focal_point_link can reach every pose in {raster_path} with the lens's current orientation rolled by {roll_xyzw} about its optical axis (focal frame +Z). Call it right after aligning, while the current focal orientation is the sun orientation: the raster keeps one orientation, so one roll has to work for every point. Solves IK against {planning_scene_msg} (collisions included). Succeeds only if every point solves; outputs that orientation in world as {rolled_orientation}."
+    _description="Checks, without moving, that ee_focal_point_link can reach every pose in {raster_path} (pass FitPlaneRasterPath's {raster_extremes} to check only the outermost points, which is much faster) with the lens's current orientation rolled by {roll_xyzw} about its optical axis (focal frame +Z). Call it right after aligning, while the current focal orientation is the sun orientation: the raster keeps one orientation, so one roll has to work for every point. Solves IK against {planning_scene_msg} (collisions included). Succeeds only if every point solves; outputs that orientation in world as {rolled_orientation}."
     _favorite="false"
     raster_path="{raster_path}"
     roll_xyzw="{roll_xyzw}"

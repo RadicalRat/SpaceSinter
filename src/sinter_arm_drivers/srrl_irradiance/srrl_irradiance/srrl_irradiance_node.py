@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Float64, String
 
 MST = timezone(timedelta(hours=-7))
@@ -67,10 +68,12 @@ class SrrlIrradianceNode(Node):
             ],
         ).value
 
-        self.dni_pub = self.create_publisher(Float64, "/srrl/dni_w_m2", 10)
-        self.ghi_pub = self.create_publisher(Float64, "/srrl/ghi_w_m2", 10)
-        self.dhi_pub = self.create_publisher(Float64, "/srrl/dhi_w_m2", 10)
-        self.json_pub = self.create_publisher(String, "/srrl/irradiance", 10)
+        # Latched, so a bag started between polls still gets the latest reading right away.
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.dni_pub = self.create_publisher(Float64, "/srrl/dni_w_m2", latched)
+        self.ghi_pub = self.create_publisher(Float64, "/srrl/ghi_w_m2", latched)
+        self.dhi_pub = self.create_publisher(Float64, "/srrl/dhi_w_m2", latched)
+        self.json_pub = self.create_publisher(String, "/srrl/irradiance", latched)
         self.last_stamp = None
         self.create_timer(self.period_s, self.poll)
         self.poll()

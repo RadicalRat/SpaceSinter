@@ -2,7 +2,7 @@
 <root BTCPP_format="4" main_tree_to_execute="Calibrate Focus Lift">
   <BehaviorTree
     ID="Calibrate Focus Lift"
-    _description="Finds focus_lift_m for Sinter Raster Closed Loop. Does the same scan, crop and plane fit as the main objective, then puts the focal point on the first raster point with the lens on the sun and steps it along the plane normal: focus_lift_m from 0.00 down to -0.08 m in 0.01 m steps (starting highest, so the lens approaches the sand; negative puts the focus below the fitted plane). It holds hold_time_s at each step and logs it; watch the spot and note the step where it is smallest and melts fastest, then set focus_lift_m in Sinter Raster Closed Loop to that value. The sun alignment is re-checked between steps. Keep the crop box and Parameters here the same as in the main objective."
+    _description="Finds focus_lift_m for Sinter Raster Closed Loop. Does the same scan, crop and plane fit as the main objective, then puts the focal point on the first raster point with the lens on the sun and steps it along the plane normal: focus_lift_m from -0.040 down to -0.070 m in 0.005 m steps (starting highest, so the lens approaches the sand; negative puts the focus below the fitted plane). It holds hold_time_s at each step and logs it; watch the spot and note the step where it is smallest and melts fastest, then set focus_lift_m in Sinter Raster Closed Loop to that value. The sun alignment is re-checked between steps. Keep the crop box and Parameters here the same as in the main objective."
     _favorite="false"
   >
     <Control ID="Sequence" name="TopLevelSequence">
@@ -10,7 +10,7 @@
       <Action
         ID="Script"
         name="Parameters"
-        code="line_spacing_m := 0.01; point_spacing_m := 0.0; edge_margin_m := 0.005; outlier_distance_m := 0.005; alignment_tolerance_rad := 0.0035; max_align_attempts := 8; settle_time_s := 0.3; align_velocity_scale := 0.25; scan_velocity_scale := 0.025; use_ephemeris_seed := true; focus_lift_m := -0.05; aim_offset_x_rad := 0.0; aim_offset_y_rad := 0.0; latitude_deg := 39.7555; longitude_deg := -105.2211; north_heading_deg := 100; hold_time_s := 8.0; step_velocity_scale := 0.05"
+        code="line_spacing_m := 0.01; point_spacing_m := 0.0; edge_margin_m := 0.005; outlier_distance_m := 0.005; alignment_tolerance_rad := 0.0035; max_align_attempts := 8; settle_time_s := 0.3; align_velocity_scale := 0.25; scan_velocity_scale := 0.025; use_ephemeris_seed := true; focus_lift_m := -0.05; aim_offset_x_rad := 0.0; aim_offset_y_rad := 0.0; latitude_deg := 39.7555; longitude_deg := -105.2211; north_heading_deg := 125; hold_time_s := 8.0; step_velocity_scale := 0.05"
       />
       <SubTree
         ID="Move to Waypoint"
@@ -61,139 +61,172 @@
         <Action ID="ResetPoseStampedVector" vector="{lift_targets}" />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=0.00"
+          name="Fit with focus_lift_m=-0.040"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="0.0"
+          surface_offset="-0.040"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.01"
+          name="Fit with focus_lift_m=-0.045"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.01"
+          surface_offset="-0.045"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.02"
+          name="Fit with focus_lift_m=-0.050"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.02"
+          surface_offset="-0.050"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.03"
+          name="Fit with focus_lift_m=-0.055"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.03"
+          surface_offset="-0.055"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.04"
+          name="Fit with focus_lift_m=-0.060"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.04"
+          surface_offset="-0.060"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.05"
+          name="Fit with focus_lift_m=-0.065"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.05"
+          surface_offset="-0.065"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
+        />
+        <Action
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
+        />
         <Action
           ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.06"
+          name="Fit with focus_lift_m=-0.070"
           point_cloud="{point_cloud_cropped}"
           line_spacing="{line_spacing_m}"
           point_spacing="{point_spacing_m}"
           edge_margin="{edge_margin_m}"
           outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.06"
+          surface_offset="-0.070"
           path="{raster_path}"
           plane_pose="{plane_pose}"
           num_waypoints="{num_waypoints}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
         <Action
-          ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.07"
-          point_cloud="{point_cloud_cropped}"
-          line_spacing="{line_spacing_m}"
-          point_spacing="{point_spacing_m}"
-          edge_margin="{edge_margin_m}"
-          outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.07"
-          path="{raster_path}"
-          plane_pose="{plane_pose}"
-          num_waypoints="{num_waypoints}"
+          ID="GetElementOfVector"
+          vector_in="{raster_path}"
+          index="0"
+          element="{lift_target}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
         <Action
-          ID="FitPlaneRasterPath"
-          name="Fit with focus_lift_m=-0.08"
-          point_cloud="{point_cloud_cropped}"
-          line_spacing="{line_spacing_m}"
-          point_spacing="{point_spacing_m}"
-          edge_margin="{edge_margin_m}"
-          outlier_distance="{outlier_distance_m}"
-          surface_offset="-0.08"
-          path="{raster_path}"
-          plane_pose="{plane_pose}"
-          num_waypoints="{num_waypoints}"
+          ID="AddPoseStampedToVector"
+          input="{lift_target}"
+          vector="{lift_targets}"
         />
-        <Action ID="GetElementOfVector" vector_in="{raster_path}" index="0" element="{lift_target}" />
-        <Action ID="AddPoseStampedToVector" input="{lift_target}" vector="{lift_targets}" />
         <Action ID="VisualizePath" path="{lift_targets}" show_poses="true" />
         <Action ID="VisualizePose" pose="{plane_pose}" marker_name="plane" />
       </Control>
@@ -425,13 +458,41 @@
         </Control>
       </Control>
       <!--The sweep: lead-in to the highest lift, then straight-line steps down the plane normal.-->
-      <Control ID="Sequence" name="Step 1/9: focus_lift_m=0.00">
-        <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="0" element="{waypoint}" />
-        <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-        <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-        <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-        <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-        <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+      <Control ID="Sequence" name="Step 1/7: focus_lift_m=-0.040">
+        <Action
+          ID="GetElementOfVector"
+          vector_in="{lift_targets}"
+          index="0"
+          element="{waypoint}"
+        />
+        <Action
+          ID="UnpackPoseStampedMessage"
+          pose_stamped="{waypoint}"
+          header="{waypoint_header}"
+          pose="{waypoint_pose}"
+        />
+        <Action
+          ID="UnpackPoseMessage"
+          pose="{waypoint_pose}"
+          position="{waypoint_position}"
+        />
+        <Action
+          ID="CreatePoseMessage"
+          position="{waypoint_position}"
+          orientation="{sun_orientation}"
+          pose="{step_target_msg}"
+        />
+        <Action
+          ID="CreatePoseStampedMessage"
+          header="{waypoint_header}"
+          pose="{step_target_msg}"
+          pose_stamped="{step_target}"
+        />
+        <Action
+          ID="VisualizePose"
+          pose="{step_target}"
+          marker_name="focus_lift_target"
+        />
         <SubTree
           ID="Move to Pose"
           _collapsed="true"
@@ -448,14 +509,37 @@
           max_mtc_solutions="0"
         />
         <!--Use the orientation actually reached for the later steps and sun corrections.-->
-        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{focal_leadin}" />
-        <Action ID="TransformPoseFrame" input_pose="{focal_leadin}" target_frame_id="world" output_pose="{focal_leadin_world}" />
-        <Action ID="UnpackPoseStampedMessage" pose_stamped="{focal_leadin_world}" pose="{focal_leadin_msg}" />
-        <Action ID="UnpackPoseMessage" pose="{focal_leadin_msg}" orientation="{sun_orientation}" />
-        <Action ID="LogMessage" message="Step 1/9: focus_lift_m=0.00 -- HOLDING, check the spot now" log_level="warn" />
+        <Action
+          ID="CreatePoseStamped"
+          reference_frame="ee_focal_point_link"
+          position_xyz="0;0;0"
+          orientation_xyzw="0;0;0;1"
+          pose_stamped="{focal_leadin}"
+        />
+        <Action
+          ID="TransformPoseFrame"
+          input_pose="{focal_leadin}"
+          target_frame_id="world"
+          output_pose="{focal_leadin_world}"
+        />
+        <Action
+          ID="UnpackPoseStampedMessage"
+          pose_stamped="{focal_leadin_world}"
+          pose="{focal_leadin_msg}"
+        />
+        <Action
+          ID="UnpackPoseMessage"
+          pose="{focal_leadin_msg}"
+          orientation="{sun_orientation}"
+        />
+        <Action
+          ID="LogMessage"
+          message="Step 1/7: focus_lift_m=-0.040 -- HOLDING, check the spot now"
+          log_level="warn"
+        />
         <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
       </Control>
-      <Control ID="Sequence" name="Step 2/9: focus_lift_m=-0.01">
+      <Control ID="Sequence" name="Step 2/7: focus_lift_m=-0.045">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -468,20 +552,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="1" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="1"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -500,13 +628,21 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 2/9: focus_lift_m=-0.01 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 2/7: focus_lift_m=-0.045 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 2/9: focus_lift_m=-0.01 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 2/7: focus_lift_m=-0.045 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
-      <Control ID="Sequence" name="Step 3/9: focus_lift_m=-0.02">
+      <Control ID="Sequence" name="Step 3/7: focus_lift_m=-0.050">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -519,20 +655,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="2" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="2"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -551,13 +731,21 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 3/9: focus_lift_m=-0.02 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 3/7: focus_lift_m=-0.050 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 3/9: focus_lift_m=-0.02 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 3/7: focus_lift_m=-0.050 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
-      <Control ID="Sequence" name="Step 4/9: focus_lift_m=-0.03">
+      <Control ID="Sequence" name="Step 4/7: focus_lift_m=-0.055">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -570,20 +758,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="3" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="3"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -602,13 +834,21 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 4/9: focus_lift_m=-0.03 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 4/7: focus_lift_m=-0.055 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 4/9: focus_lift_m=-0.03 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 4/7: focus_lift_m=-0.055 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
-      <Control ID="Sequence" name="Step 5/9: focus_lift_m=-0.04">
+      <Control ID="Sequence" name="Step 5/7: focus_lift_m=-0.060">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -621,20 +861,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="4" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="4"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -653,13 +937,21 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 5/9: focus_lift_m=-0.04 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 5/7: focus_lift_m=-0.060 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 5/9: focus_lift_m=-0.04 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 5/7: focus_lift_m=-0.060 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
-      <Control ID="Sequence" name="Step 6/9: focus_lift_m=-0.05">
+      <Control ID="Sequence" name="Step 6/7: focus_lift_m=-0.065">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -672,20 +964,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="5" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="5"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -704,13 +1040,21 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 6/9: focus_lift_m=-0.05 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 6/7: focus_lift_m=-0.065 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 6/9: focus_lift_m=-0.05 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 6/7: focus_lift_m=-0.065 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
-      <Control ID="Sequence" name="Step 7/9: focus_lift_m=-0.06">
+      <Control ID="Sequence" name="Step 7/7: focus_lift_m=-0.070">
         <Control ID="Fallback">
           <Control ID="Sequence">
             <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
@@ -723,20 +1067,64 @@
               alignment_error_rad="{alignment_error_rad}"
               corrected_focal_pose="{corrected_focal_pose}"
             />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
+            <Decorator
+              ID="Precondition"
+              if="alignment_error_rad &gt;= alignment_tolerance_rad"
+              else="SUCCESS"
+            >
               <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
+                <Action
+                  ID="UnpackPoseStampedMessage"
+                  pose_stamped="{corrected_focal_pose}"
+                  pose="{corrected_pose_msg}"
+                />
+                <Action
+                  ID="UnpackPoseMessage"
+                  pose="{corrected_pose_msg}"
+                  orientation="{sun_orientation}"
+                />
               </Control>
             </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="6" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
+            <Action
+              ID="GetElementOfVector"
+              vector_in="{lift_targets}"
+              index="6"
+              element="{waypoint}"
+            />
+            <Action
+              ID="UnpackPoseStampedMessage"
+              pose_stamped="{waypoint}"
+              header="{waypoint_header}"
+              pose="{waypoint_pose}"
+            />
+            <Action
+              ID="UnpackPoseMessage"
+              pose="{waypoint_pose}"
+              position="{waypoint_position}"
+            />
+            <Action
+              ID="CreatePoseMessage"
+              position="{waypoint_position}"
+              orientation="{sun_orientation}"
+              pose="{step_target_msg}"
+            />
+            <Action
+              ID="CreatePoseStampedMessage"
+              header="{waypoint_header}"
+              pose="{step_target_msg}"
+              pose_stamped="{step_target}"
+            />
+            <Action
+              ID="VisualizePose"
+              pose="{step_target}"
+              marker_name="focus_lift_target"
+            />
             <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
+            <Action
+              ID="AddPoseStampedToVector"
+              input="{step_target}"
+              vector="{step_segment}"
+            />
             <Action
               ID="PlanCartesianPath"
               path="{step_segment}"
@@ -755,112 +1143,18 @@
               execution_pipeline="jtac"
               controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
             />
-            <Action ID="LogMessage" message="Step 7/9: focus_lift_m=-0.06 -- HOLDING, check the spot now" log_level="warn" />
+            <Action
+              ID="LogMessage"
+              message="Step 7/7: focus_lift_m=-0.070 -- HOLDING, check the spot now"
+              log_level="warn"
+            />
             <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
           </Control>
-          <Action ID="LogMessage" message="Step 7/9: focus_lift_m=-0.06 -- could not reach, skipped" log_level="warn" />
-        </Control>
-      </Control>
-      <Control ID="Sequence" name="Step 8/9: focus_lift_m=-0.07">
-        <Control ID="Fallback">
-          <Control ID="Sequence">
-            <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
-            <SubTree
-              ID="Estimate Sun Alignment"
-              _collapsed="true"
-              settle_time_s="{settle_time_s}"
-              aim_offset_x_rad="{aim_offset_x_rad}"
-              aim_offset_y_rad="{aim_offset_y_rad}"
-              alignment_error_rad="{alignment_error_rad}"
-              corrected_focal_pose="{corrected_focal_pose}"
-            />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
-              <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
-              </Control>
-            </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="7" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
-            <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
-            <Action
-              ID="PlanCartesianPath"
-              path="{step_segment}"
-              planning_group_name="manipulator"
-              tip_links="ee_focal_point_link"
-              position_only="false"
-              blending_radius="0.0005"
-              ik_joint_space_density="0.01"
-              max_optimizer_iterations="2"
-              velocity_scale_factor="{step_velocity_scale}"
-              joint_trajectory_msg="{step_trajectory}"
-            />
-            <Action
-              ID="ExecuteTrajectory"
-              joint_trajectory_msg="{step_trajectory}"
-              execution_pipeline="jtac"
-              controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
-            />
-            <Action ID="LogMessage" message="Step 8/9: focus_lift_m=-0.07 -- HOLDING, check the spot now" log_level="warn" />
-            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
-          </Control>
-          <Action ID="LogMessage" message="Step 8/9: focus_lift_m=-0.07 -- could not reach, skipped" log_level="warn" />
-        </Control>
-      </Control>
-      <Control ID="Sequence" name="Step 9/9: focus_lift_m=-0.08">
-        <Control ID="Fallback">
-          <Control ID="Sequence">
-            <!--Sun re-check, as in the raster scan: the sun moves ~0.25 deg/min, so keep the lens on it between steps.-->
-            <SubTree
-              ID="Estimate Sun Alignment"
-              _collapsed="true"
-              settle_time_s="{settle_time_s}"
-              aim_offset_x_rad="{aim_offset_x_rad}"
-              aim_offset_y_rad="{aim_offset_y_rad}"
-              alignment_error_rad="{alignment_error_rad}"
-              corrected_focal_pose="{corrected_focal_pose}"
-            />
-            <Decorator ID="Precondition" if="alignment_error_rad &gt;= alignment_tolerance_rad" else="SUCCESS">
-              <Control ID="Sequence" name="Update lens orientation">
-                <Action ID="UnpackPoseStampedMessage" pose_stamped="{corrected_focal_pose}" pose="{corrected_pose_msg}" />
-                <Action ID="UnpackPoseMessage" pose="{corrected_pose_msg}" orientation="{sun_orientation}" />
-              </Control>
-            </Decorator>
-            <Action ID="GetElementOfVector" vector_in="{lift_targets}" index="8" element="{waypoint}" />
-            <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{waypoint_header}" pose="{waypoint_pose}" />
-            <Action ID="UnpackPoseMessage" pose="{waypoint_pose}" position="{waypoint_position}" />
-            <Action ID="CreatePoseMessage" position="{waypoint_position}" orientation="{sun_orientation}" pose="{step_target_msg}" />
-            <Action ID="CreatePoseStampedMessage" header="{waypoint_header}" pose="{step_target_msg}" pose_stamped="{step_target}" />
-            <Action ID="VisualizePose" pose="{step_target}" marker_name="focus_lift_target" />
-            <Action ID="ResetPoseStampedVector" vector="{step_segment}" />
-            <Action ID="AddPoseStampedToVector" input="{step_target}" vector="{step_segment}" />
-            <Action
-              ID="PlanCartesianPath"
-              path="{step_segment}"
-              planning_group_name="manipulator"
-              tip_links="ee_focal_point_link"
-              position_only="false"
-              blending_radius="0.0005"
-              ik_joint_space_density="0.01"
-              max_optimizer_iterations="2"
-              velocity_scale_factor="{step_velocity_scale}"
-              joint_trajectory_msg="{step_trajectory}"
-            />
-            <Action
-              ID="ExecuteTrajectory"
-              joint_trajectory_msg="{step_trajectory}"
-              execution_pipeline="jtac"
-              controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
-            />
-            <Action ID="LogMessage" message="Step 9/9: focus_lift_m=-0.08 -- HOLDING, check the spot now" log_level="warn" />
-            <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
-          </Control>
-          <Action ID="LogMessage" message="Step 9/9: focus_lift_m=-0.08 -- could not reach, skipped" log_level="warn" />
+          <Action
+            ID="LogMessage"
+            message="Step 7/7: focus_lift_m=-0.070 -- could not reach, skipped"
+            log_level="warn"
+          />
         </Control>
       </Control>
       <!--End sintering-->
@@ -900,8 +1194,8 @@
   <TreeNodesModel>
     <SubTree ID="Calibrate Focus Lift">
       <MetadataFields>
-        <Metadata subcategory="Sinter" />
         <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
       </MetadataFields>
     </SubTree>
   </TreeNodesModel>

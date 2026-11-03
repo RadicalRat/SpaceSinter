@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Calibrate RealSense Mount">
+  <BehaviorTree
+    ID="Calibrate RealSense Mount"
+    _description="Data collection for the RealSense mount calibration. From Scan_Initial, tilts the RealSense about its own axes (+/-15 deg about Y, Z and the two diagonals, +/-25 deg roll about the viewing axis X), returning to Scan_Initial between tilts, and holds still hold_s seconds at each pose. Run scripts/rs_calibration (capture) alongside it; it saves a cloud + TF at every still pose. Needs a large flat area (ground or table, plus the bucket) in view at Scan_Initial. Poses that cannot be planned are skipped. Does not change any calibration itself."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="Script" code="hold_s := 4.0; settle_s := 4.0; velocity_scale := 0.2" />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="0.5"
+      />
+      <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+      <!--Pose 1: tilt +15 about Y (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 1: tilt +15 about Y">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="0.0;0.130526;0.0;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 2: tilt -15 about Y (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 2: tilt -15 about Y">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="-0.0;-0.130526;-0.0;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 3: tilt +15 about Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 3: tilt +15 about Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="0.0;0.0;0.130526;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 4: tilt -15 about Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 4: tilt -15 about Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="-0.0;-0.0;-0.130526;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 5: tilt +15 about Y+Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 5: tilt +15 about Y+Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="0.0;0.092296;0.092296;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 6: tilt -15 about Y+Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 6: tilt -15 about Y+Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="-0.0;-0.092296;-0.092296;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 7: tilt +15 about Y-Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 7: tilt +15 about Y-Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="0.0;0.092296;-0.092296;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 8: tilt -15 about Y-Z (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 8: tilt -15 about Y-Z">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="-0.0;-0.092296;0.092296;0.991445" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 9: roll +25 about view axis X (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 9: roll +25 about view axis X">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="0.21644;0.0;0.0;0.976296" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+      <!--Pose 10: roll -25 about view axis X (about ee_realsense_link's own axes, camera origin fixed). Skipped if it cannot be planned.-->
+      <Control ID="Fallback" name="Pose 10: roll -25 about view axis X">
+        <Control ID="Sequence">
+          <Action ID="CreatePoseStamped" reference_frame="ee_realsense_link" position_xyz="0;0;0" orientation_xyzw="-0.21644;-0.0;-0.0;0.976296" pose_stamped="{cal_pose}" />
+          <Action ID="TransformPoseFrame" input_pose="{cal_pose}" target_frame_id="world" output_pose="{cal_pose_world}" />
+          <Action ID="VisualizePose" pose="{cal_pose_world}" marker_name="rs_cal_target" />
+          <SubTree
+            ID="Move to Pose"
+            _collapsed="true"
+            target_pose="{cal_pose_world}"
+            ik_frame="ee_realsense_link"
+            velocity_scale_factor="{velocity_scale}"
+            link_padding="0.01"
+            controller_names="joint_trajectory_admittance_controller"
+            controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+            execution_pipeline="jtac"
+            planning_group_name="manipulator"
+            require_user_approval="false"
+            max_ik_solutions="8"
+            max_mtc_solutions="0"
+          />
+          <Action ID="WaitForDuration" delay_duration="{hold_s}" />
+        </Control>
+        <Action ID="AlwaysSuccess" />
+      </Control>
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="{velocity_scale}"
+      />
+      <Action ID="WaitForDuration" delay_duration="{settle_s}" />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Calibrate RealSense Mount">
+      <MetadataFields>
+        <Metadata subcategory="Sinter" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

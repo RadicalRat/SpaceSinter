@@ -1,0 +1,530 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Sinter Dot Grid">
+  <BehaviorTree
+    ID="Sinter Dot Grid"
+    _description="Placement-error test: burns a grid of dots instead of lines. Same scan, crop, plane fit, ephemeris seed, sun alignment and reachability check as Sinter Raster Closed Loop, but each raster waypoint becomes a dot: travel between dots hover_lift_m above the surface (defocused, so nothing burns), re-align to the sun there, descend, re-align at the surface, dwell dwell_time_s, log the sun error, lift off. Photograph the dots with a scale (ArUco markers or a ruler pressed into the bed) and compare each dot centroid with its commanded point in /sinter/raster_path. Keep the crop box and the shared Parameters the same as in the main objective."
+    _favorite="true"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!--Tunable parameters. Dot pitch: line_spacing_m between rows, point_spacing_m along a row (the row is split evenly, so the pitch is at most this). dwell_time_s is the burn time per dot. hover_lift_m is how far above the dot (along the plane normal) the lens travels between dots; 3 cm puts the focus ~3 cm off the surface, a ~4 cm blur that does not burn. transit_velocity_scale (hover to hover) and approach_velocity_scale (down to and up from a dot) are fractions of max joint velocity. alignment_tolerance_rad 0.002 (0.11 deg, ~0.7 mm at f = 0.37 m) is tighter than the raster default so the dot shows placement, not pointing. outlier_distance_m drops depth points farther than that from the fitted plane (sun glare noise). settle_time_s is the pause after each move before a sun camera frame is grabbed, so the image shows the new pose (camera latency + arm vibration). north_heading_deg is the direction of true north in world, CCW from +X (55 as of 2026-10-28: world +X ~NE, -Y ~SE. It describes how the robot base is turned relative to true north, so re-measure it whenever the robot is rotated; it does not change with the sun). focus_lift_m raises the raster off the fitted plane along its normal so the focus lands on the sand (+ = up; the RealSense plane sat below the real surface, 2026-10-28). aim_offset_x_rad / aim_offset_y_rad: where the sun sits in the sun camera image (rad from center) when the lens itself is on the sun; calibrate with Calibrate Aim Offset. Set use_ephemeris_seed to false when testing with the simulated sun camera, which places the sun relative to the camera rather than the sky.-->
+      <Action
+        ID="Script"
+        name="Parameters"
+        code="line_spacing_m := 0.015; point_spacing_m := 0.015; edge_margin_m := 0.005; outlier_distance_m := 0.005; alignment_tolerance_rad := 0.002; max_align_attempts := 8; settle_time_s := 0.3; align_velocity_scale := 0.25; use_ephemeris_seed := true; focus_lift_m := -0.055; aim_offset_x_rad := 0.0; aim_offset_y_rad := 0.0; latitude_deg := 39.7555; longitude_deg := -105.2211; north_heading_deg := 125; dwell_time_s := 5.0; hover_lift_m := 0.03; transit_velocity_scale := 0.1; approach_velocity_scale := 0.05; hover_surface_offset := focus_lift_m + hover_lift_m"
+      />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
+      <SubTree ID="Clear Snapshot" _collapsed="true" />
+      <!--RealSense D415 depth -> crop to X x Y + plane fit -> dot grid on the surface, plus the matching hover grid-->
+      <Control ID="Sequence" name="Generate scanning waypoints">
+        <Action
+          ID="GetPointCloud"
+          topic_name="/camera/camera/depth/color/points"
+          message_out="{point_cloud_scan}"
+          publisher_timeout_sec="5.000000"
+        />
+        <Action
+          ID="TransformPointCloudFrame"
+          input_cloud="{point_cloud_scan}"
+          target_frame="world"
+          output_cloud="{point_cloud_scan}"
+        />
+        <!--X x Y crop region on the surface (tune position/size for your setup). Z is tall so any surface height is kept.-->
+        <Action
+          ID="CreatePoseStamped"
+          reference_frame="world"
+          position_xyz="-0.60;0.0120;0"
+          orientation_xyzw="0;0;0;1"
+          pose_stamped="{crop_pose}"
+        />
+        <Action
+          ID="CropPointsInBox"
+          point_cloud="{point_cloud_scan}"
+          crop_box_centroid_pose="{crop_pose}"
+          crop_box_size="0.050;0.05;1.0"
+          point_cloud_cropped="{point_cloud_cropped}"
+        />
+        <Action ID="SendPointCloudToUI" point_cloud="{point_cloud_cropped}" />
+        <!--Same grid hover_lift_m higher along the plane normal (same cloud and spacing, so index i matches dot i).-->
+        <Action
+          ID="FitPlaneRasterPath"
+          name="Hover grid"
+          point_cloud="{point_cloud_cropped}"
+          line_spacing="{line_spacing_m}"
+          point_spacing="{point_spacing_m}"
+          edge_margin="{edge_margin_m}"
+          outlier_distance="{outlier_distance_m}"
+          surface_offset="{hover_surface_offset}"
+          path="{hover_path}"
+          plane_pose="{hover_plane_pose}"
+          num_waypoints="{num_hover_waypoints}"
+        />
+        <Action
+          ID="FitPlaneRasterPath"
+          point_cloud="{point_cloud_cropped}"
+          line_spacing="{line_spacing_m}"
+          point_spacing="{point_spacing_m}"
+          edge_margin="{edge_margin_m}"
+          outlier_distance="{outlier_distance_m}"
+          surface_offset="{focus_lift_m}"
+          path="{raster_path}"
+          plane_pose="{plane_pose}"
+          num_waypoints="{num_waypoints}"
+        />
+        <Action ID="VisualizePath" path="{raster_path}" show_poses="true" />
+        <Action ID="VisualizePose" pose="{plane_pose}" marker_name="plane" />
+      </Control>
+      <!--Begin sintering from BeforeSinter, close to the surface: the sun seed and alignment happen here, so the lead-in to the first raster point is short. Then the starting sun pose from the ephemeris model.-->
+      <!--Via Home: Scan_Initial and BeforeSinter are ~180 deg apart on joint 6, and the direct move takes the short way through +/-180 deg, winding the wrist cables. Via Home both legs are under 180 deg and pass through 0.-->
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        _skipIf="true"
+        waypoint_name="Home"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="BeforeSinter"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
+      <Action
+        ID="WaitForDuration"
+        name="WaitForDuration"
+        _skipIf="true"
+        delay_duration="5.000000"
+      />
+      <Decorator ID="Precondition" if="use_ephemeris_seed" else="SUCCESS">
+        <!--Starting sun pose. The sun stays low here (under ~38 deg in late October at this latitude), so the lens tilts far over; try lens roll angles about the optical axis, nearest the current one first, and take the first that plans.-->
+        <Control
+          ID="Fallback"
+          name="Starting sun pose (ephemeris), try lens rolls"
+        >
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll 0 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;0;1"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll 45 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;0.382683;0.92388"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll -45 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;-0.382683;0.92388"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll 90 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;0.707107;0.707107"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll -90 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;-0.707107;0.707107"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll 135 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;0.92388;0.382683"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll -135 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;-0.92388;0.382683"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+          <SubTree
+            ID="Move To Sun Seed With Roll"
+            name="Roll 180 deg"
+            _collapsed="true"
+            roll_xyzw="0;0;1;0"
+            latitude_deg="{latitude_deg}"
+            longitude_deg="{longitude_deg}"
+            north_heading_deg="{north_heading_deg}"
+            velocity_scale_factor="{align_velocity_scale}"
+          />
+        </Control>
+      </Decorator>
+      <!--Rotate lens to align to sun about focal point; alignment error < tolerance, or abort-->
+      <SubTree
+        ID="Align Lens To Sun"
+        _collapsed="true"
+        alignment_tolerance_rad="{alignment_tolerance_rad}"
+        max_align_attempts="{max_align_attempts}"
+        velocity_scale_factor="{align_velocity_scale}"
+        settle_time_s="{settle_time_s}"
+        aim_offset_x_rad="{aim_offset_x_rad}"
+        aim_offset_y_rad="{aim_offset_y_rad}"
+        aligned_focal_pose="{aligned_focal_pose}"
+      />
+      <!--Reachability check before going near the surface: the raster keeps one lens orientation (the sun direction plus a roll about the optical axis, which does not move the focus), so find a roll for which IK solves at every raster point, nearest the current roll first. That orientation becomes sun_orientation for the lead-in and the scan. If none works the sun is too low or the surface is out of reach from here (see the description), so stop with the arm still up.-->
+      <Action
+        ID="GetCurrentPlanningScene"
+        planning_scene_msg="{planning_scene}"
+      />
+      <Control
+        ID="Fallback"
+        name="Pick a lens roll that reaches the whole raster"
+      >
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll 0 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;0;1"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll 45 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;0.382683;0.92388"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll -45 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;-0.382683;0.92388"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll 90 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;0.707107;0.707107"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll -90 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;-0.707107;0.707107"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll 135 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;0.92388;0.382683"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll -135 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;-0.92388;0.382683"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <SubTree
+          ID="Raster Reachable With Roll"
+          name="Roll 180 deg"
+          _collapsed="true"
+          raster_path="{raster_path}"
+          roll_xyzw="0;0;1;0"
+          planning_scene_msg="{planning_scene}"
+          rolled_orientation="{sun_orientation}"
+        />
+        <Control ID="Sequence" name="No roll reaches the raster">
+          <Action
+            ID="LogMessage"
+            message="Sinter raster unreachable: with the lens on the sun, IK fails for at least one raster point at every lens roll. The sun is too low for this surface position; move the surface to the side of the base away from the sun, or sinter closer to solar noon."
+            log_level="error"
+          />
+          <Action ID="AlwaysFailure" />
+        </Control>
+      </Control>
+      <!--Burn one dot per grid point-->
+      <Decorator
+        ID="ForEach"
+        vector_in="{raster_path}"
+        index="{index}"
+        out="{waypoint}"
+      >
+        <Control ID="Sequence" name="Sinter dot">
+          <Action ID="GetElementOfVector" vector_in="{hover_path}" index="{index}" element="{hover_waypoint}" />
+            <Control ID="Sequence" name="Hover target with sun orientation">
+              <Action ID="UnpackPoseStampedMessage" pose_stamped="{hover_waypoint}" header="{target_header}" pose="{target_pose_msg}" />
+              <Action ID="UnpackPoseMessage" pose="{target_pose_msg}" position="{target_position}" />
+              <Action ID="CreatePoseMessage" position="{target_position}" orientation="{sun_orientation}" pose="{target_msg}" />
+              <Action ID="CreatePoseStampedMessage" header="{target_header}" pose="{target_msg}" pose_stamped="{hover_target}" />
+            </Control>
+          <Action ID="VisualizePose" pose="{hover_target}" marker_name="dot_hover" />
+          <!--First dot: free-space lead-in from BeforeSinter with the roll the reachability check chose. Later dots: straight line hover to hover, defocused.-->
+          <Decorator ID="Precondition" if="index == 0" else="SUCCESS">
+            <SubTree
+              ID="Move to Pose"
+              _collapsed="true"
+              target_pose="{hover_target}"
+              ik_frame="ee_focal_point_link"
+              velocity_scale_factor="{align_velocity_scale}"
+              link_padding="0.01"
+              controller_names="joint_trajectory_admittance_controller"
+              controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+              execution_pipeline="jtac"
+              planning_group_name="manipulator"
+              require_user_approval="false"
+              max_ik_solutions="8"
+              max_mtc_solutions="0"
+            />
+          </Decorator>
+          <Decorator ID="Precondition" if="index != 0" else="SUCCESS">
+            <Control ID="Sequence" name="Transit to next hover point">
+              <Control ID="Sequence" name="Hover to hover">
+                <Action ID="ResetPoseStampedVector" vector="{dot_segment}" />
+                <Action ID="AddPoseStampedToVector" input="{hover_target}" vector="{dot_segment}" />
+                <Action
+                  ID="PlanCartesianPath"
+                  path="{dot_segment}"
+                  planning_group_name="manipulator"
+                  tip_links="ee_focal_point_link"
+                  position_only="false"
+                  blending_radius="0.0005"
+                  ik_joint_space_density="0.01"
+                  max_optimizer_iterations="2"
+                  velocity_scale_factor="{transit_velocity_scale}"
+                  joint_trajectory_msg="{dot_trajectory}"
+                />
+                <Action
+                  ID="ExecuteTrajectory"
+                  joint_trajectory_msg="{dot_trajectory}"
+                  execution_pipeline="jtac"
+                  controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+                />
+              </Control>
+            </Control>
+          </Decorator>
+          <!--Coarse alignment while defocused, so correcting does not smear the dot.-->
+          <Control ID="Sequence" name="Align at hover">
+            <SubTree
+              ID="Align Lens To Sun"
+              name="Align at hover"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_offset_x_rad}"
+              aim_offset_y_rad="{aim_offset_y_rad}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="UnpackPoseStampedMessage" pose_stamped="{aligned_focal_pose}" pose="{aligned_pose_msg}" />
+            <Action ID="UnpackPoseMessage" pose="{aligned_pose_msg}" orientation="{sun_orientation}" />
+          </Control>
+          <Control ID="Sequence" name="Descend to the dot">
+            <Control ID="Sequence" name="Dot target with sun orientation">
+              <Action ID="UnpackPoseStampedMessage" pose_stamped="{waypoint}" header="{target_header}" pose="{target_pose_msg}" />
+              <Action ID="UnpackPoseMessage" pose="{target_pose_msg}" position="{target_position}" />
+              <Action ID="CreatePoseMessage" position="{target_position}" orientation="{sun_orientation}" pose="{target_msg}" />
+              <Action ID="CreatePoseStampedMessage" header="{target_header}" pose="{target_msg}" pose_stamped="{dot_target}" />
+            </Control>
+            <Control ID="Sequence" name="Down along the plane normal">
+              <Action ID="ResetPoseStampedVector" vector="{dot_segment}" />
+              <Action ID="AddPoseStampedToVector" input="{dot_target}" vector="{dot_segment}" />
+              <Action
+                ID="PlanCartesianPath"
+                path="{dot_segment}"
+                planning_group_name="manipulator"
+                tip_links="ee_focal_point_link"
+                position_only="false"
+                blending_radius="0.0005"
+                ik_joint_space_density="0.01"
+                max_optimizer_iterations="2"
+                velocity_scale_factor="{approach_velocity_scale}"
+                joint_trajectory_msg="{dot_trajectory}"
+              />
+              <Action
+                ID="ExecuteTrajectory"
+                joint_trajectory_msg="{dot_trajectory}"
+                execution_pipeline="jtac"
+                controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+              />
+            </Control>
+          </Control>
+          <Action ID="VisualizePose" pose="{dot_target}" marker_name="dot_target" />
+          <!--Fine alignment at the surface: the descent changes the arm pose, so its deflection, slightly.-->
+          <Control ID="Sequence" name="Align at the dot">
+            <SubTree
+              ID="Align Lens To Sun"
+              name="Align at the dot"
+              _collapsed="true"
+              alignment_tolerance_rad="{alignment_tolerance_rad}"
+              max_align_attempts="{max_align_attempts}"
+              velocity_scale_factor="{align_velocity_scale}"
+              settle_time_s="{settle_time_s}"
+              aim_offset_x_rad="{aim_offset_x_rad}"
+              aim_offset_y_rad="{aim_offset_y_rad}"
+              aligned_focal_pose="{aligned_focal_pose}"
+            />
+            <Action ID="UnpackPoseStampedMessage" pose_stamped="{aligned_focal_pose}" pose="{aligned_pose_msg}" />
+            <Action ID="UnpackPoseMessage" pose="{aligned_pose_msg}" orientation="{sun_orientation}" />
+          </Control>
+          <Action ID="LogMessage" message="Sinter Dot Grid: dwelling on a dot" log_level="info" />
+          <Action ID="WaitForDuration" delay_duration="{dwell_time_s}" />
+          <!--Measure only (publishes /sinter/sun_error): pointing at the end of the dwell.-->
+          <SubTree
+            ID="Estimate Sun Alignment"
+            _collapsed="true"
+            settle_time_s="0.0"
+            aim_offset_x_rad="{aim_offset_x_rad}"
+            aim_offset_y_rad="{aim_offset_y_rad}"
+            alignment_error_rad="{dwell_end_error_rad}"
+            corrected_focal_pose="{dwell_end_corrected_pose}"
+          />
+          <Control ID="Sequence" name="Lift off the dot">
+            <Control ID="Sequence" name="Hover target with sun orientation">
+              <Action ID="UnpackPoseStampedMessage" pose_stamped="{hover_waypoint}" header="{target_header}" pose="{target_pose_msg}" />
+              <Action ID="UnpackPoseMessage" pose="{target_pose_msg}" position="{target_position}" />
+              <Action ID="CreatePoseMessage" position="{target_position}" orientation="{sun_orientation}" pose="{target_msg}" />
+              <Action ID="CreatePoseStampedMessage" header="{target_header}" pose="{target_msg}" pose_stamped="{hover_target}" />
+            </Control>
+            <Control ID="Sequence" name="Up along the plane normal">
+              <Action ID="ResetPoseStampedVector" vector="{dot_segment}" />
+              <Action ID="AddPoseStampedToVector" input="{hover_target}" vector="{dot_segment}" />
+              <Action
+                ID="PlanCartesianPath"
+                path="{dot_segment}"
+                planning_group_name="manipulator"
+                tip_links="ee_focal_point_link"
+                position_only="false"
+                blending_radius="0.0005"
+                ik_joint_space_density="0.01"
+                max_optimizer_iterations="2"
+                velocity_scale_factor="{approach_velocity_scale}"
+                joint_trajectory_msg="{dot_trajectory}"
+              />
+              <Action
+                ID="ExecuteTrajectory"
+                joint_trajectory_msg="{dot_trajectory}"
+                execution_pipeline="jtac"
+                controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+              />
+            </Control>
+          </Control>
+        </Control>
+      </Decorator>
+      <!--End sintering-->
+      <!--Via Home so the return to Scan_Initial does not take joint 6 through +/-180 deg.-->
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Home"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="Scan_Initial"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="1.0"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Sinter Dot Grid">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

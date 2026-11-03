@@ -111,12 +111,7 @@ BT::NodeStatus ComputeSunEphemeris::tick()
     return BT::NodeStatus::FAILURE;
   }
 
-  // Azimuth is clockwise from north; frame angles are counter-clockwise from +X.
-  constexpr double kDeg = M_PI / 180.0;
-  const double heading = (north_heading - sun.azimuth_deg) * kDeg;
-  const double elevation = sun.elevation_deg * kDeg;
-  const Eigen::Vector3d sun_dir(std::cos(elevation) * std::cos(heading), std::cos(elevation) * std::sin(heading),
-                                std::sin(elevation));
+  const Eigen::Vector3d sun_dir = sunDirection(sun, north_heading);
 
   // Smallest rotation taking the pose's +Z onto the sun direction keeps the roll about the lens axis unchanged.
   Eigen::Isometry3d pose;

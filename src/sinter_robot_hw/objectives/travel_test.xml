@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Travel Test">
+  <BehaviorTree
+    ID="Travel Test"
+    _description="No sun needed. Checks whether the arm really moves as far as its kinematic model says (GoPro and tile both suggest ~0.85x). From BeforeSinter, moves the focal point straight 100 mm along world +X, back, then +Y and back, then +Z and back, holding the lens orientation, pausing hold_time_s at each end. Any rigid point on the end effector moves by the same vector, so tape a pointer to the lens frame, mark its tip at each pause, and measure with a ruler. Also read a phone inclinometer on the lens frame at each pause (static tilt per 100 mm) and record the GoPro tag view + a bag."
+    _favorite="false"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="Script" name="Parameters" code="hold_time_s := 15.0; travel_velocity_scale := 0.05" />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="BeforeSinter"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.01"
+        seed="0"
+        velocity_scale_factor="0.5"
+      />
+      <Control ID="Sequence" name="+X: out 100 mm and back">
+        <Action ID="LogMessage" message="Travel Test +X: MARK THE START POSITION (and read the inclinometer). Moving in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{focal_here}" />
+        <Action ID="TransformPoseFrame" input_pose="{focal_here}" target_frame_id="world" output_pose="{start_pose}" />
+        <Action ID="TransformPose" input_pose="{start_pose}" translation_xyz="0.10;0;0" quaternion_xyzw="0;0;0;1" output_pose="{end_pose}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{end_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +X: at +100 mm. MARK THE END POSITION (and read the inclinometer). Returning in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{start_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +X: back at start. Check the pointer returned to the start mark." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+      </Control>
+      <Control ID="Sequence" name="+Y: out 100 mm and back">
+        <Action ID="LogMessage" message="Travel Test +Y: MARK THE START POSITION (and read the inclinometer). Moving in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{focal_here}" />
+        <Action ID="TransformPoseFrame" input_pose="{focal_here}" target_frame_id="world" output_pose="{start_pose}" />
+        <Action ID="TransformPose" input_pose="{start_pose}" translation_xyz="0;0.10;0" quaternion_xyzw="0;0;0;1" output_pose="{end_pose}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{end_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +Y: at +100 mm. MARK THE END POSITION (and read the inclinometer). Returning in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{start_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +Y: back at start. Check the pointer returned to the start mark." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+      </Control>
+      <Control ID="Sequence" name="+Z: out 100 mm and back">
+        <Action ID="LogMessage" message="Travel Test +Z: MARK THE START POSITION (and read the inclinometer). Moving in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{focal_here}" />
+        <Action ID="TransformPoseFrame" input_pose="{focal_here}" target_frame_id="world" output_pose="{start_pose}" />
+        <Action ID="TransformPose" input_pose="{start_pose}" translation_xyz="0;0;0.10" quaternion_xyzw="0;0;0;1" output_pose="{end_pose}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{end_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +Z: at +100 mm. MARK THE END POSITION (and read the inclinometer). Returning in 15 s." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+        <Action ID="ResetPoseStampedVector" vector="{travel_segment}" />
+        <Action ID="AddPoseStampedToVector" input="{start_pose}" vector="{travel_segment}" />
+        <Action ID="PlanCartesianPath" path="{travel_segment}" planning_group_name="manipulator" tip_links="ee_focal_point_link" position_only="false" blending_radius="0.0005" ik_joint_space_density="0.01" max_optimizer_iterations="2" velocity_scale_factor="{travel_velocity_scale}" joint_trajectory_msg="{travel_trajectory}" />
+        <Action ID="ExecuteTrajectory" joint_trajectory_msg="{travel_trajectory}" execution_pipeline="jtac" controller_action_name="/joint_trajectory_admittance_controller/follow_joint_trajectory" />
+        <Action ID="LogMessage" message="Travel Test +Z: back at start. Check the pointer returned to the start mark." log_level="warn" />
+        <Action ID="WaitForDuration" delay_duration="{hold_time_s}" />
+      </Control>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Travel Test">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Sinter" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

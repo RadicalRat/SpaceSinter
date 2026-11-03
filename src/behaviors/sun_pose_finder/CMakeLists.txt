@@ -8,7 +8,7 @@ find_package(cv_bridge REQUIRED)
 moveit_pro_package()
 
 
-set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface pluginlib cv_bridge sensor_msgs geometry_msgs nav_msgs std_msgs tf2_eigen)
+set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface pluginlib cv_bridge sensor_msgs geometry_msgs nav_msgs std_msgs tf2_eigen tf2_ros)
 foreach(package IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${package} REQUIRED)
 endforeach()
@@ -47,6 +47,12 @@ install(
 target_link_libraries(sun_pose_finder
   ${OpenCV_LIBS}
   ${cv_bridge_LIBS})
+
+# Standalone sun ephemeris publisher, launched with the drivers so it runs whether or not an objective does.
+add_executable(sun_ephemeris_node src/sun_ephemeris_node.cpp)
+target_include_directories(sun_ephemeris_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+ament_target_dependencies(sun_ephemeris_node rclcpp geometry_msgs std_msgs tf2_eigen tf2_ros)
+install(TARGETS sun_ephemeris_node DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   moveit_pro_behavior_test(sun_pose_finder)
