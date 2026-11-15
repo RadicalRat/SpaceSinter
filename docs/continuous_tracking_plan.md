@@ -181,3 +181,139 @@ This is the continuous form of the outline's formulation (lens axis ∥ ŝ(t), F
   mock 0.021/0.045/0.077 (half the rot gain, sim jitter 0.5 px still on: sensor-vs-truth rms 0.05 deg/axis);
   dexterity 0.122 -> 0.135 (min 0.114, roll optimisation working on hardware); control step 0.18 / p99 0.34 / max
   2.2 ms; joint motion smooth (2.6 % of 0.2 s windows near-still, no stick-slip pattern).
+- 2026-11-14 hardware run 2 (sim jitter 0.5 -> 0.1 px, otherwise as run 1; hw_runs/hw_run2.npz): completed.
+  Path error unchanged (0.27 / 0.68 / 1.13 mm; lift max 2.06 mm). TRUE pointing 0.040 / 0.096 / 0.178 deg (run 1:
+  0.047 / 0.112 / 0.191), 2.8 % of scan over 0.115 deg (run 1: 4.4 %). Measured-vs-truth difference stayed
+  ~0.04 deg/axis despite 5x less jitter, so it is timing (frame vs truth sample alignment while the real lens moves),
+  not sensor noise. True error split: slow (>2 s) 0.025 deg (mock 0.016; gain_rot 0.5 vs 1.0, lag = 2x-sun rate /
+  gain) and fast (<2 s) 0.022 deg/axis (mock 0.010: real-arm response). Both show a 0.18 Hz component, likely the loop
+  with the ~4 Hz sim camera (Python renderer); the real camera is 28 Hz.
+- 2026-11-14 hardware run 3 (gain_rot 1.0, else as run 2; hw_runs/hw_run3.npz): completed, but pointing got WORSE:
+  TRUE 0.098 / 0.189 / 0.252 deg, 37 % of scan over 0.115 deg (run 2 at gain 0.5: 0.040 / 0.096 / 0.178, 2.8 %);
+  path error also up (0.45 / 0.81 / 1.39 mm). The true error is dominated by a ~0.2 Hz oscillation (peak-to-peak
+  0.46 deg at gain 1.0 vs 0.33 at 0.5; mock 0.10). The sim camera runs at only ~4 Hz and its measurement lags truth
+  by 0.25 s; with the real arm's response lag on top, the loop is delay-limited and higher gain just rings.
+  Conclusion: keep gain_rot 0.5 in hw_testing; the real Arducam (28 Hz, less latency) should allow more gain, so
+  retune there. Making the sim camera fast (render a crop or lower res) would make hw_testing representative.
+- 2026-11-14 hardware run 4 (sim camera image_scale 0.25, sun 1.5 deg): blob never detected (2.3 px radius < detector
+  limits), 0 % of 1369 frames; tracker stayed lifted 30 mm with the lens still and the path at 0 until the user
+  stopped it — the no-sun pause/lift behaving as designed on the real arm.
+- 2026-11-14 hardware run 5 (image_scale 0.25 + sun 4.0 deg → 30 Hz, measurement lag 0.03 s; real-speed drift;
+  jitter 0.1 px ≈ 0.033 deg/axis; gain_rot 0.33; hw_runs/hw_run5.npz): BEST so far. TRUE pointing 0.036 / 0.091 /
+  0.148 deg, 1.2 % of scan over 0.115 deg; path 0.28 / 0.64 / 1.06 mm; lift max 1.84 mm; acquire 10.4 s (low gain).
+  A ~0.18 Hz component remains (0.26 deg p-p, ~half the error power on hardware). It is also in the mock with roll
+  optimisation OFF (26 % of power), so it is neither the camera rate nor the roll optimisation; source not yet found.
+- 2026-11-14 hardware run 6 (as run 5 but gain_roll 0; hw_runs/hw_run6.npz): BEST. TRUE pointing 0.032 / 0.070 /
+  0.121 deg, 0.0 % over 0.115 deg; path 0.28 / 0.54 / 0.90 mm; lift max 1.34 mm. Roll optimisation (run 5) cost
+  accuracy (0.036/0.091/0.148, 1.2 %) and turned joints 4 and 6 ~19 deg each over the scan (vs 2-4 deg without),
+  while the MINIMUM dexterity was the same (0.111 vs 0.112); it only raised the end value (0.136 vs 0.123). The
+  0.15-0.25 Hz share of error power dropped 49 % -> 30 % (mock without roll: 26 %), so the roll motion amplified
+  the wobble on hardware but is not its root. Recommendation: keep gain_roll 0 (default in the real objective).
+- 2026-11-14 hardware run 7 (as run 6 but gain_rot 0.5; hw_runs/hw_run7.npz): completed. Acquire 8.1 s (run 6: 10.9);
+  TRUE pointing 0.035 / 0.071 / 0.124 deg, 0.1 % over 0.115 (run 6: 0.032 / 0.070 / 0.121, 0 %); path 0.26 / 0.51 /
+  0.87 mm; lift-phase path error max 2.26 mm (run 6: 1.34; limit 3 mm). 0.18 Hz share 45 % (run 6: 30 %), same p-p.
+  So 0.5 ≈ 0.33 in accuracy with faster acquisition; the lift error is the margin to watch (along/across-lift check
+  still recommended before the real sun).
+- 2026-11-14 hardware run 8 (as run 7 + gain_roll 0.025; hw_runs/hw_run8.npz): completed. Wrist still turned ~18-19 deg
+  (j4 17.9, j6 19.0) — the same as at 0.075 — so the gain only sets how fast the roll climbs to the same local
+  dexterity maximum, not how far. Dexterity end 0.135 vs 0.124 without roll, but the scan MINIMUM is unchanged
+  (0.122 vs 0.121; the minimum is at the start, before the roll moves). Cost: pointing p95 0.094 vs 0.071 deg (1.8 %
+  over tol vs 0.1 %), path p95/max 0.83/1.41 vs 0.51/0.87 mm. Conclusion: on this path roll optimisation buys no
+  safety margin and costs accuracy at any gain; keep gain_roll 0. Up-front roll selection (KeepBestRoll) is the
+  useful part.
+- 2026-11-14 figure hw_runs/runs_pointing_and_dexterity.png (pointing + dexterity vs scan time, runs 1-8 except 4).
+  Correction to the run 6/8 notes: with roll optimisation the scan MINIMUM dexterity is ~3-5 % higher (0.122-0.126 vs
+  0.120-0.121), because the roll already starts moving during acquisition; by the end it is ~10 % higher. Still a
+  small margin gain for the accuracy cost.
+- 2026-11-14 CHECK of the "true pointing error" method (user asked):
+  - Definition (sim_sun_camera.py): each rendered frame, the sun's world direction is rotated into the camera optical
+    frame using the latest world→ee_camera_optical_link TF (FK from /joint_states); truth = (dx/dz, dy/dz) tan offsets
+    and acos(dz). Same TF and sun direction that draw that frame; jitter is added only to the drawn blob, not to truth.
+  - Camera optical axis vs lens (focal) axis in the URDF: 0.0003 deg apart, so camera-axis error = lens-axis error.
+  - acos(dz) vs atan(hypot(tan x, tan y)): agree to 1e-9 deg.
+  - Measured (sensor) minus truth, matched to the SAME frame (truth published just before the measurement): bias
+    < 0.003 deg; rms 0.010 deg/axis at 1280x720 (expected jitter 0.008) and 0.040 at 320x180 (expected 0.033; rest is
+    centroid quantisation of the small blob). CORRECTION: the earlier note (run 2) that the ~0.04 deg measured-vs-
+    truth difference was "timing, not noise" was an alignment artefact of my nearest-sample matching; with
+    same-frame matching it is just the jitter.
+  - Caveat: "true" here = pointing of the arm's KINEMATIC MODEL (FK) at the sim sun, because the sim sun is placed
+    from the FK pose. It cannot see arm deflection, joint-calibration or camera-mount errors — on the real sun those
+    appear (the Trial 2 GoPro showed ~0.6 deg/100 mm that FK misses). The sun sensor closes the loop on them; this
+    sim truth does not include them.
+  - The figure's 2 s average of |error| reads slightly high (averaging magnitudes); the medians/percentiles in the
+    tables use per-frame truth.
+- 2026-11-14 SUN FEEDFORWARD added to TrackRasterWithSun (`sun_feedforward`, `latitude_deg`, `north_heading_deg`,
+  `sun_feedforward_scale`): w_ff = -(2*pi/86400) * scale * celestial-pole axis (north at heading CCW from +X, tilted
+  up by latitude), added to the P command before the rate clamp; also applied while the sun is hidden and during the
+  final lift. Test SunFeedforward.MatchesTheEphemerisMotion: rotating the ephemeris sun by w_ff for 60 s lands within
+  2 % of the ephemeris 60 s later (3 dates/times); a 10 deg heading error leaves < 15 % of the rate to feedback.
+  Enabled in Sinter Raster Continuous ({latitude_deg}, {north_heading_deg}) and the mock objective (scale 1.0 = sim
+  drift at real speed; set the scale to the sim's drift ratio if the sim drift is changed).
+- 2026-11-14 review of Sinter Raster Continuous + tracker. Fixed: the real objective still lifted at 10 mm/s (the
+  rate that failed on hardware) → 3 mm/s; during lifts the tracking abort now checks the error ACROSS the lift
+  against max_tracking_error_m and ALONG it against 3x (the along-lift error is driver/arm lag that only moves the
+  focus up/down); the image callback group is reused instead of created per run. 20/20 tests (scratch build; live
+  install not yet rebuilt). Not changed (usage notes): use_ephemeris_seed must be false with the simulated sun;
+  crop box position is hard-coded; via-Home still skipped; a UI Stop does not lift; reachability uses per-point IK.
+- 2026-11-15 REVIEW FIXES implemented (findings 1-6 of the 2026-11-14 review + 10 follow-up findings from an
+  AGENTS.md-persona reviewer subagent) and tested on the mock:
+  - Tracker: hold band (scan_tolerance_rad 0.004, debounced hold_lift_s 0.1: lift + re-acquire instead of scanning
+    off-sun; the scan no longer gates on each frame's error); start_lifted (lead-in goes to the LIFTED point 0);
+    lift_m 0.08 in the objectives; settle gate after every descent (resume when < resume_tolerance_m 0.5 mm across
+    the lens axis and < 3 mm along; after 2 s FAIL if > 1 mm across or > 3 mm along, else warn and resume); the
+    looser across/along tracking check also applies while settling; lift axis re-read every tick; the lifted
+    reference turns with the lens, so v_ff += lift * (w x axis) (also while finishing); sun feedforward projected
+    perpendicular to the lens axis; lift_speed_mps default 0.003; sun_feedforward read strictly (fails if
+    unreadable) and logged at start.
+  - New SimulateRasterScan (kinematic rehearsal from ONE seed: descend -> raster -> lift, DLS Newton = exact IK on
+    the nearest branch, orientation turning with the projected feedforward; fails on position residual > 0.5 mm,
+    orientation residual > 1 mrad, joint limit, joint speed > 0.3 rad/s; path must be in the model frame) +
+    OffsetPosesAlongAxis; roll selection now scores each roll by its simulated scan, collision-checks the simulated
+    trajectory (ValidateTrajectory, last sample always included), and KeepBestRoll carries the seed
+    (require_joint_state). Lead-in = Move to Joint State to that seed. Tracker and simulator share
+    {sun_feedforward}/{sun_feedforward_scale}. Objective warns if gain_roll > 0 (the scored scan holds roll).
+  - scripts/tracking/gen_continuous_objectives.py regenerates that section of Sinter Raster Continuous and derives
+    Sinter Raster Continuous Mock (synthetic 3-line path); now idempotent (md5 unchanged on a 2nd run).
+  - Tests: 20/20 gtests (scratch build). Live install rebuilt; mock objective symlinked into install.
+  - Mock results (scripts/tracking/mock_runs/review_fixes_*.npz):
+    - Sinter Raster Continuous Mock: SUCCESS. Rolls 0 and -45 passed (others IK-fail at the mock pose); roll 0 kept
+      (sim min dexterity 0.093, peak joint speed 0.019 rad/s, wrist travel 16.9 deg). Tracker started 80.0 mm lifted
+      at the seed, descended in 26.7 s, scanned 98 mm at 2 mm/s with no holds: path error mean/p95/max
+      0.039/0.117/0.247 mm, true pointing 0.006/0.011/0.015 deg, MEASURED min dexterity 0.092 (sim predicted
+      0.093), final 80 mm lift 26.7 s.
+    - Hold band (Track Raster With Sun Mock + sim sun stepped +0.5 deg in elevation at 15 % progress): lift started
+      0.14 s after the true error crossed the 0.229 deg band, peak lift 6.4 mm, re-acquired ~2 s, path frozen at
+      14.78 mm throughout, resumed, completed. Focused (lift < 3 mm) above the band for 1.1 s total = debounce +
+      time to climb 3 mm at 3 mm/s.
+    - Test Sun Loss Pause, Test Stop And Resume: SUCCESS; path frozen during every lift. Test Camera Dropout:
+      fails by design after the 3 s watchdog, lift completed to 30 mm first.
+  - NOT exercised by the mock: the settle gate opened within one tick after every descent (the mock arm has no
+    lag), so the 2 s timeout / fail path and the slow-descent warning are untested until hardware. Deferred
+    (reviewer finding): up to ~1-1.5 s focused dwell at the resume point while settling on hardware (option:
+    advance at ~0.3 V while settling). Reviewer's "add return after the camera-watchdog finish()" was REJECTED:
+    it would skip the finishing (lift) branch on every later tick.
+- 2026-11-15 SECOND REVIEW (Fable reviewer, AGENTS.md persona, read-only). No high-severity findings. Verified each
+  against the code; fixed:
+  - M1 a frame with no blob no longer replaces the last valid sun measurement (one bad frame used to pause + lift +
+    re-settle); loss is declared once the last valid frame is older than sun_timeout_s (0.5 s).
+  - M2 focal-frame TF staleness: older than 0.5 s (or lookup failing) → fail and lift OPEN LOOP along the last lens
+    axis (the controller still moves by its own joint states); before: a frozen pose kept the loop running on a
+    constant error, and a TF exception stopped focused with no lift.
+  - M3 callback lifetime: subscription/timer lambdas hold a shared CallbackGuard (shared_mutex + alive flag);
+    teardown (and the new destructor) waits for callbacks in flight and marks it dead. stop() no longer touches
+    timer_ from the timer thread (raced with teardown resetting it).
+  - L2 return after the camera-watchdog finish when lift_m = 0 (stop() already ran). L3 hold-band debounce also
+    needs 2 distinct camera frames over the band (a slow real camera re-reads one frame for many ticks).
+    L4 start tolerance capped at max_tracking_error_m. L5 at the path end while lifted: finish (success) without
+    descending again. L6 the simulator skips zero-length segments and the output trajectory times strictly increase.
+    L7 generator parses both XMLs before writing either, only ADDS missing Parameters (keeps hand tuning), and
+    asserts the tracker and SimulateRasterScan read the same blackboard keys.
+  - Rejected nothing this round; earlier "return after watchdog finish" is now done the safe way (only when done_).
+  - Open (user decisions): M4 the controlStep state machine has no unit tests (needs extracting a pure step
+    function; also the only way to test the settle timeout off hardware); L1 max_pointing_error_rad can never fire
+    because the 0.1 s hold band pre-empts it (remove, or apply while re-acquiring); L6 the simulator rehearses the
+    lift only at the first/last point, not a mid-raster lift on the scan's branch.
+  - 21/21 gtests. Mock retest (scripts/tracking/mock_runs/review2_*.npz): Sinter Raster Continuous Mock SUCCESS
+    (path err mean/p95/max 0.039/0.116/0.247 mm, true pointing 0.004/0.008/0.016 deg, dexterity 0.092);
+    hold band (0.5 deg sun step) lifted 7.8 mm, resumed at 14.8 mm, completed; Sun Loss Pause and Stop And Resume
+    SUCCESS; Camera Dropout fails by design after lifting. No false TF-stale trips. TF-stale path itself untested.

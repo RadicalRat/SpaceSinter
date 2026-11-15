@@ -36,6 +36,10 @@ TEST(BehaviorTests, test_load_behavior_plugins)
     (void)factory.instantiateTreeNode("test_behavior_name", "ComputeDexterity", BT::NodeConfiguration()));
   EXPECT_NO_THROW(
     (void)factory.instantiateTreeNode("test_behavior_name", "KeepBestRoll", BT::NodeConfiguration()));
+  EXPECT_NO_THROW(
+    (void)factory.instantiateTreeNode("test_behavior_name", "OffsetPosesAlongAxis", BT::NodeConfiguration()));
+  EXPECT_NO_THROW(
+    (void)factory.instantiateTreeNode("test_behavior_name", "SimulateRasterScan", BT::NodeConfiguration()));
 }
 
 int main(int argc, char** argv)

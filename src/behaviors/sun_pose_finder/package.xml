@@ -20,6 +20,7 @@
   <depend>moveit_pro_controllers_msgs</depend>
   <depend>moveit_studio_agent_msgs</depend>
   <depend>moveit_pro_base</depend>
+  <depend>trajectory_msgs</depend>
 
   <depend>libopencv-dev</depend>
   <depend>sensor_msgs</depend>

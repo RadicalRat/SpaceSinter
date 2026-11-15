@@ -1,0 +1,4 @@
++2.4s [20] TrackRasterWithSun Info: Tracking 98.0 mm of path at 0.50 mm/s (6 points).
++48.1s [20] TrackRasterWithSun Info: Timing: control step mean 0.162 / p99 0.310 / max 1.499 ms (n=2283) | dexterity part mean 0.072 / p99 0.141 / max 1.066 ms (n=2283) | sun detection per frame mean 0.122 / p99 0.223 / max 0.609 ms (n=1369) | tick period mean 20.000 / p99 20.201 / max 22.367 ms (n=2282) (target 20.0 ms)
++48.1s [30] TrackRasterWithSun Warning: Stopped at 0.0 mm along the path (zero twist sent).
++48.1s [40] Execution of Behavior Tree for Objective `Track Raster With Sun Mock` was cancelled: Objective execution was halted at time: 1794711379.02858567 seconds

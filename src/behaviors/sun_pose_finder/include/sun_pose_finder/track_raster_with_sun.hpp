@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,14 @@ private:
 /// the correction rotation is RPY(-vy, vx, 0) in ee_focal_point_link). vx, vy are tan offsets from the aim point.
 Eigen::Vector3d sunErrorToFocalAngularVelocity(double vx, double vy, double gain);
 
+/**
+ * @brief Sun feedforward: the sun's apparent angular velocity in the world frame (rad/s). The sky turns about the
+ * celestial pole at one turn per solar day, westward, so this is -(2*pi/86400) * scale * pole axis, independent of
+ * where the sun is. The pole axis is true north (north_heading_deg CCW from +X) tilted up by the latitude.
+ * A heading error of dh only tilts the axis by ~cos(lat)*dh, so a 10 deg error leaves ~0.0006 deg/s for feedback.
+ */
+Eigen::Vector3d sunFeedforwardWorld(double latitude_deg, double north_heading_deg, double scale = 1.0);
+
 /// Clamp a vector's norm.
 Eigen::Vector3d clampNorm(const Eigen::Vector3d& v, double max_norm);
 
@@ -70,6 +79,8 @@ public:
   static BT::PortsList providedPorts();
   static BT::KeyValueVector metadata();
 
+  ~TrackRasterWithSun() override;
+
   BT::NodeStatus onStart() override;
   BT::NodeStatus onRunning() override;
   void onHalted() override;
@@ -80,6 +91,14 @@ private:
     rclcpp::Time stamp;
     double vx = 0.0, vy = 0.0;
     bool valid = false;
+    uint64_t seq = 0;  // camera frame counter (distinct frames, for debouncing)
+  };
+  /// Shared with the subscription/timer lambdas so a callback the executor dispatches after teardown (or after
+  /// this node is destroyed) sees alive == false instead of touching a dead object.
+  struct CallbackGuard
+  {
+    std::shared_mutex m;
+    bool alive = true;
   };
 
   void onImage(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
@@ -112,6 +131,15 @@ private:
   double camera_timeout_ = 3.0;
   // Defocus lift
   double lift_m_ = 0.03, lift_speed_ = 0.01, lift_ = 0.0, max_acquire_err_ = 0.15, finish_timeout_ = 5.0;
+  Eigen::Vector3d w_ff_ = Eigen::Vector3d::Zero();  // sun feedforward (world, rad/s); zero when disabled
+  // Hold band / resume: the path advances only with pointing inside scan_tol_ and the focus settled back on the bed.
+  double scan_tol_ = 0.004, hold_lift_s_ = 0.1, resume_tol_ = 0.0005, over_scan_since_ = -1.0, descend_since_ = -1.0;
+  bool descended_ = false;
+  uint64_t over_scan_seq_ = 0;  // frame that started the current over-band interval
+  uint64_t frame_seq_ = 0;
+  Eigen::Isometry3d last_T_ = Eigen::Isometry3d::Identity();  // last fresh focal pose
+  bool have_T_ = false;
+  std::shared_ptr<CallbackGuard> cb_guard_;
   Eigen::Vector3d lift_dir_ = Eigen::Vector3d::UnitZ();
   bool finishing_ = false;
   std::string finish_msg_;

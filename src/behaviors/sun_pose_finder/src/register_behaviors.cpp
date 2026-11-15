@@ -7,6 +7,7 @@
 #include <sun_pose_finder/sun_pose_finder.hpp>
 #include <sun_pose_finder/track_raster_with_sun.hpp>
 #include <sun_pose_finder/roll_selection.hpp>
+#include <sun_pose_finder/raster_scan_sim.hpp>
 
 #include <pluginlib/class_list_macros.hpp>
 
@@ -24,6 +25,8 @@ public:
     moveit_pro::behaviors::registerBehavior<TrackRasterWithSun>(factory, "TrackRasterWithSun", shared_resources);
     moveit_pro::behaviors::registerBehavior<ComputeDexterity>(factory, "ComputeDexterity", shared_resources);
     moveit_pro::behaviors::registerBehavior<KeepBestRoll>(factory, "KeepBestRoll", shared_resources);
+    moveit_pro::behaviors::registerBehavior<OffsetPosesAlongAxis>(factory, "OffsetPosesAlongAxis", shared_resources);
+    moveit_pro::behaviors::registerBehavior<SimulateRasterScan>(factory, "SimulateRasterScan", shared_resources);
     
   }
 };

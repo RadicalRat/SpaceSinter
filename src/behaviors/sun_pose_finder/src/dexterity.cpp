@@ -77,6 +77,79 @@ DexterityEvaluator::DexterityEvaluator(const std::shared_ptr<moveit_pro::behavio
 
 DexterityEvaluator::~DexterityEvaluator() = default;
 
+std::optional<Eigen::VectorXd> DexterityEvaluator::groupPositions(const std::vector<std::string>& names,
+                                                                  const std::vector<double>& positions)
+{
+  if (!error_.empty() || names.size() != positions.size())
+  {
+    return std::nullopt;
+  }
+  try
+  {
+    state_->setVariablePositions(names, positions);
+    Eigen::VectorXd q;
+    state_->copyJointGroupPositions(group_, q);
+    return q;
+  }
+  catch (const std::exception&)
+  {
+    return std::nullopt;
+  }
+}
+
+Eigen::Isometry3d DexterityEvaluator::tipPose(const Eigen::VectorXd& q)
+{
+  state_->setJointGroupPositions(group_, q);
+  state_->update();
+  return state_->getGlobalLinkTransform(tip_);
+}
+
+std::optional<Eigen::MatrixXd> DexterityEvaluator::jacobianWorld(const Eigen::VectorXd& q)
+{
+  const auto j = jacobianAt(q);  // in the group root link frame
+  if (!j)
+  {
+    return std::nullopt;
+  }
+  const auto* root = group_->getJointModels().front()->getParentLinkModel();
+  Eigen::Matrix3d r = Eigen::Matrix3d::Identity();
+  if (root)
+  {
+    r = state_->getGlobalLinkTransform(root).linear();
+  }
+  Eigen::MatrixXd jw = *j;
+  jw.topRows(3) = r * j->topRows(3);
+  jw.bottomRows(3) = r * j->bottomRows(3);
+  return jw;
+}
+
+std::string DexterityEvaluator::modelFrame() const
+{
+  return model_ ? model_->getModelFrame() : std::string();
+}
+
+std::vector<std::string> DexterityEvaluator::variableNames() const
+{
+  return group_ ? group_->getVariableNames() : std::vector<std::string>{};
+}
+
+std::vector<std::tuple<double, double, bool>> DexterityEvaluator::bounds() const
+{
+  std::vector<std::tuple<double, double, bool>> out;
+  if (!group_)
+  {
+    return out;
+  }
+  for (const auto* jm : group_->getActiveJointModels())
+  {
+    for (const auto& b : jm->getVariableBounds())
+    {
+      out.emplace_back(b.min_position_, b.max_position_, b.position_bounded_);
+    }
+  }
+  return out;
+}
+
 std::optional<Eigen::MatrixXd> DexterityEvaluator::jacobianAt(const Eigen::VectorXd& q)
 {
   state_->setJointGroupPositions(group_, q);

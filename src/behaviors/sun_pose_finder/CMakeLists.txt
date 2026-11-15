@@ -9,7 +9,7 @@ find_package(moveit_pro_base REQUIRED)
 moveit_pro_package()
 
 
-set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface moveit_pro_controllers_msgs moveit_studio_agent_msgs pluginlib cv_bridge sensor_msgs geometry_msgs nav_msgs std_msgs tf2_eigen tf2_ros)
+set(THIS_PACKAGE_INCLUDE_DEPENDS moveit_pro_behavior_interface moveit_pro_controllers_msgs moveit_studio_agent_msgs trajectory_msgs pluginlib cv_bridge sensor_msgs geometry_msgs nav_msgs std_msgs tf2_eigen tf2_ros)
 foreach(package IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${package} REQUIRED)
 endforeach()
@@ -23,6 +23,7 @@ add_library(
   src/track_raster_with_sun.cpp
   src/dexterity.cpp
   src/roll_selection.cpp
+  src/raster_scan_sim.cpp
   src/register_behaviors.cpp)
 
 target_include_directories(

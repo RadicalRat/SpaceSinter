@@ -14,6 +14,10 @@ namespace sun_pose_finder
 {
 namespace
 {
+constexpr double kDepthOfFocusM = 0.003;  // R4: +-3 mm standoff tolerance
+constexpr double kTfStaleS = 0.5;        // focal-frame TF older than this: the loop is blind
+constexpr double kSettleTimeoutS = 2.0;   // longest wait for the descent to settle before resuming
+constexpr double kMaxResumeAcrossM = 0.001;  // after that wait, resume only within 1 mm of the path (else fail)
 constexpr auto kPathPort = "path";
 constexpr auto kSpeedPort = "scan_speed_mps";
 constexpr auto kImageTopicPort = "image_topic";
@@ -86,6 +90,15 @@ Eigen::Vector3d sunErrorToFocalAngularVelocity(double vx, double vy, double gain
   return gain * Eigen::Vector3d(-vy, vx, 0.0);
 }
 
+Eigen::Vector3d sunFeedforwardWorld(double latitude_deg, double north_heading_deg, double scale)
+{
+  constexpr double kDeg = M_PI / 180.0;
+  constexpr double kSolarDay = 86400.0;
+  const double lat = latitude_deg * kDeg, heading = north_heading_deg * kDeg;
+  const Eigen::Vector3d pole(std::cos(lat) * std::cos(heading), std::cos(lat) * std::sin(heading), std::sin(lat));
+  return -(2.0 * M_PI / kSolarDay) * scale * pole;
+}
+
 Eigen::Vector3d clampNorm(const Eigen::Vector3d& v, double max_norm)
 {
   const double n = v.norm();
@@ -140,11 +153,31 @@ BT::PortsList TrackRasterWithSun::providedPorts()
     BT::InputPort<double>("sun_timeout_s", 0.5, "No sun for this long: hold the lens and pause the path."),
     BT::InputPort<double>("sun_lost_abort_s", 0.0, "No sun for this long: fail. 0 = never (pause until the sun "
                                                    "returns)."),
+    BT::InputPort<double>("scan_tolerance_rad", 0.004, "Hold band: the path only advances while the sun error is "
+                                                       "below this (keep it under R2 = atan(R1/f) ~ 0.0054 rad)."),
+    BT::InputPort<double>("hold_lift_s", 0.1, "Debounce: if the sun error stays above scan_tolerance_rad this long "
+                                              "(a few frames, so one noisy frame does not trigger it), the path stops "
+                                              "and the focus lifts at once; it resumes after re-acquiring to "
+                                              "acquire_tolerance_rad (hysteresis)."),
+    BT::InputPort<double>("resume_tolerance_m", 0.0005, "After a lift, the path only resumes once the focal point is "
+                                                        "this close to the (unlifted) reference: the descent has "
+                                                        "settled, so the first mm is not sintered defocused."),
+    BT::InputPort<bool>("start_lifted", false, "The focal point starts lift_m above the first path point (lead-in to "
+                                               "the lifted point), so the spot is never focused while acquiring."),
+    BT::InputPort<bool>("sun_feedforward", false, "Add the sun's predicted motion (rotation about the celestial "
+                                                  "pole, 15 deg/h) to the pointing command, so the P loop only "
+                                                  "corrects the residual (removes the rate/gain lag). Also keeps "
+                                                  "the lens following the sun while it is hidden."),
+    BT::InputPort<double>("latitude_deg", 39.7555, "Site latitude for the feedforward."),
+    BT::InputPort<double>("north_heading_deg", 125.0, "True north in world, deg CCW from +X (a 10 deg error barely "
+                                                      "matters for the feedforward)."),
+    BT::InputPort<double>("sun_feedforward_scale", 1.0, "Multiplies the feedforward rate (1 = real sky; match the "
+                                                        "simulated sun's drift when testing with it)."),
     BT::InputPort<double>("lift_m", 0.03, "Defocus lift: the focal point is held this far above the path point "
                                           "(along the lens axis, toward the lens) whenever the sun is not locked "
                                           "(start, clouds) and before reporting any stop, so the spot never dwells "
                                           "focused on one point. 0 = off."),
-    BT::InputPort<double>("lift_speed_mps", 0.01, "Speed of the defocus lift, m/s."),
+    BT::InputPort<double>("lift_speed_mps", 0.003, "Speed of the defocus lift, m/s (10 mm/s left 3 mm of lag on the JACO2)."),
     BT::InputPort<double>("max_acquire_error_rad", 0.15, "While acquiring (lifted), fail if the sun error stays "
                                                          "above this for 1 s (a glint or wrong blob would otherwise "
                                                          "steer the lens without limit)."),
@@ -224,7 +257,8 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   max_point_err_ = mpe;
   sun_timeout_ = st;
   sun_abort_ = sa;
-  start_tol_ = start_tol;
+  // A start farther off than the tracking limit would pass here and then fail on the first tick: use the tighter.
+  start_tol_ = std::min(start_tol, max_track_err_);
   finish_tol_ = finish_tol;
   aim_x_ = ax;
   aim_y_ = ay;
@@ -238,7 +272,29 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   dex_length_ = getInput<double>("dexterity_length_m").value_or(0.4);
   camera_timeout_ = getInput<double>("camera_timeout_s").value_or(3.0);
   lift_m_ = std::max(0.0, getInput<double>("lift_m").value_or(0.03));
-  lift_speed_ = std::max(1e-4, getInput<double>("lift_speed_mps").value_or(0.01));
+  scan_tol_ = getInput<double>("scan_tolerance_rad").value_or(0.004);
+  hold_lift_s_ = getInput<double>("hold_lift_s").value_or(0.1);
+  resume_tol_ = getInput<double>("resume_tolerance_m").value_or(0.0005);
+  over_scan_since_ = -1.0;
+  descended_ = false;
+  descend_since_ = -1.0;
+  const bool start_lifted = getInput<bool>("start_lifted").value_or(false);
+  // Read explicitly: a value that does not convert (e.g. a mistyped blackboard entry) must not silently disable it
+  // while SimulateRasterScan scored the scan with it.
+  const auto use_ff = getInput<bool>("sun_feedforward");
+  if (!use_ff)
+  {
+    shared_resources_->logger->publishFailureMessage(name(), "sun_feedforward: " + use_ff.error());
+    return BT::NodeStatus::FAILURE;
+  }
+  w_ff_ = *use_ff ?
+              sunFeedforwardWorld(getInput<double>("latitude_deg").value_or(39.7555),
+                                  getInput<double>("north_heading_deg").value_or(125.0),
+                                  getInput<double>("sun_feedforward_scale").value_or(1.0)) :
+              Eigen::Vector3d(Eigen::Vector3d::Zero());
+  shared_resources_->logger->publishInfoMessage(
+      name(), fmt::format("Sun feedforward {} ({:.3g} rad/s).", *use_ff ? "on" : "off", w_ff_.norm()));
+  lift_speed_ = std::max(1e-4, getInput<double>("lift_speed_mps").value_or(0.003));
   max_acquire_err_ = getInput<double>("max_acquire_error_rad").value_or(0.15);
   finish_timeout_ = getInput<double>("finish_timeout_s").value_or(5.0);
   lift_ = 0.0;
@@ -285,13 +341,15 @@ BT::NodeStatus TrackRasterWithSun::onStart()
         shared_resources_->transform_buffer_ptr->lookupTransform(world_frame_, focal_frame_, tf2::TimePointZero);
     const Eigen::Vector3d p0 = tf2::transformToEigen(tf_focal).translation();
     lift_dir_ = tf2::transformToEigen(tf_focal).linear().col(2).normalized();  // focal +Z: toward the lens/sun
-    const Eigen::Vector3d start = ref.point(start_at);
+    const Eigen::Vector3d start = ref.point(start_at) + (start_lifted ? lift_m_ : 0.0) * lift_dir_;
     if ((p0 - start).norm() > start_tol_)
     {
       shared_resources_->logger->publishFailureMessage(
           name(), fmt::format("Focal point is {:.1f} mm from the path point at {:.1f} mm (limit {:.1f} mm); move "
                               "there first.",
-                              1e3 * (p0 - start).norm(), 1e3 * start_at, 1e3 * start_tol_));
+                              1e3 * (p0 - start).norm(), 1e3 * start_at, 1e3 * start_tol_) +
+                  (start_lifted ? fmt::format(" (start_lifted: the point is {:.0f} mm up the lens axis)", 1e3 * lift_m_) :
+                                  std::string()));
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -316,6 +374,7 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   }
   path_.emplace(std::move(pts));
   s_ = std::clamp(start_at, 0.0, path_->length());
+  lift_ = start_lifted ? lift_m_ : 0.0;  // after the reset of lift_ above
   paused_ = false;
   ever_acquired_ = false;
   setOutput("progress_m", s_.load());
@@ -342,17 +401,30 @@ BT::NodeStatus TrackRasterWithSun::onStart()
     v->clear();
     v->reserve(4096);
   }
+  cb_guard_ = std::make_shared<CallbackGuard>();
   rclcpp::SubscriptionOptions opts;
   opts.callback_group = shared_resources_->reentrant_callback_group;
   info_sub_ = node->create_subscription<sensor_msgs::msg::CameraInfo>(
       info_topic, rclcpp::SensorDataQoS(),
-      [this](const sensor_msgs::msg::CameraInfo::ConstSharedPtr& m) { onCameraInfo(m); }, opts);
+      [this, g = cb_guard_](const sensor_msgs::msg::CameraInfo::ConstSharedPtr& m) {
+        std::shared_lock<std::shared_mutex> lk(g->m);
+        if (g->alive)
+        {
+          onCameraInfo(m);
+        }
+      },
+      opts);
   if (dex_)
   {
     js_names_.clear();
     js_sub_ = node->create_subscription<sensor_msgs::msg::JointState>(
         "/joint_states", 10,
-        [this](const sensor_msgs::msg::JointState::ConstSharedPtr& m) {
+        [this, g = cb_guard_](const sensor_msgs::msg::JointState::ConstSharedPtr& m) {
+          std::shared_lock<std::shared_mutex> glk(g->m);
+          if (!g->alive)
+          {
+            return;
+          }
           std::lock_guard<std::mutex> lk(mutex_);
           js_names_ = m->name;
           js_positions_ = m->position;
@@ -360,15 +432,32 @@ BT::NodeStatus TrackRasterWithSun::onStart()
         opts);
   }
   rclcpp::SubscriptionOptions image_opts;
-  image_cb_group_ = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  if (!image_cb_group_)
+  {
+    image_cb_group_ = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  }
   image_opts.callback_group = image_cb_group_;
   image_sub_ = node->create_subscription<sensor_msgs::msg::Image>(
       image_topic, rclcpp::SensorDataQoS().keep_last(1),
-      [this](const sensor_msgs::msg::Image::ConstSharedPtr& m) { onImage(m); }, image_opts);
+      [this, g = cb_guard_](const sensor_msgs::msg::Image::ConstSharedPtr& m) {
+        std::shared_lock<std::shared_mutex> lk(g->m);
+        if (g->alive)
+        {
+          onImage(m);
+        }
+      },
+      image_opts);
   last_sun_seen_ = node->now();
   last_frame_ns_ = node->now().nanoseconds();
   start_time_ = node->now();
-  timer_ = node->create_wall_timer(std::chrono::duration<double>(1.0 / rate_hz_), [this] { controlStep(); },
+  timer_ = node->create_wall_timer(std::chrono::duration<double>(1.0 / rate_hz_),
+                                   [this, g = cb_guard_] {
+                                     std::shared_lock<std::shared_mutex> lk(g->m);
+                                     if (g->alive)
+                                     {
+                                       controlStep();
+                                     }
+                                   },
                                    shared_resources_->callback_group_mutually_exclusive);
   shared_resources_->logger->publishInfoMessage(
       name(), fmt::format("Tracking {:.1f} mm of path at {:.2f} mm/s ({} points).", 1e3 * path_->length(),
@@ -432,7 +521,13 @@ void TrackRasterWithSun::onImage(const sensor_msgs::msg::Image::ConstSharedPtr& 
     sun_pub_->publish(out);
   }
   std::lock_guard<std::mutex> lk(mutex_);
-  sun_ = m;
+  // A single frame without a blob (cloud edge, saturation flicker) must not pause the scan: keep the last valid
+  // measurement; the sun counts as lost once that is older than sun_timeout_s.
+  if (m.valid)
+  {
+    m.seq = ++frame_seq_;
+    sun_ = m;
+  }
   if (t_detect_.size() < 200000)
   {
     t_detect_.push_back(det_ms);
@@ -467,11 +562,7 @@ void TrackRasterWithSun::stop(const std::string& why, BT::NodeStatus result)
   {
     std::lock_guard<std::mutex> lk(cmd_mutex_);
     publishTwist(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
-    done_ = true;
-  }
-  if (timer_)
-  {
-    timer_->cancel();
+    done_ = true;  // later ticks return at once; teardown() (BT thread) cancels the timer
   }
 }
 
@@ -538,17 +629,51 @@ void TrackRasterWithSun::controlStep()
   last_tick_ = now;
   started_clock_ = true;
 
-  Eigen::Isometry3d T_world_focal;
+  // Focal pose from TF. A stale pose (joint states or robot_state_publisher stalled) would make every feedback
+  // term act on a frozen error, so: fail, and lift open loop along the last lens axis (the controller moves by its
+  // own joint states, so the commanded lift still happens).
+  std::string tf_problem;
   try
   {
-    T_world_focal = tf2::transformToEigen(
-        shared_resources_->transform_buffer_ptr->lookupTransform(world_frame_, focal_frame_, tf2::TimePointZero));
+    const auto tfm =
+        shared_resources_->transform_buffer_ptr->lookupTransform(world_frame_, focal_frame_, tf2::TimePointZero);
+    const double age = (now - rclcpp::Time(tfm.header.stamp, now.get_clock_type())).seconds();
+    if (age > kTfStaleS)
+    {
+      tf_problem = fmt::format("focal-frame TF is {:.1f} s old (joint states stalled?)", age);
+    }
+    else
+    {
+      last_T_ = tf2::transformToEigen(tfm);
+      have_T_ = true;
+    }
   }
   catch (const tf2::TransformException& e)
   {
-    stop(std::string("TF lookup failed: ") + e.what(), BT::NodeStatus::FAILURE);
+    tf_problem = std::string("TF lookup failed: ") + e.what();
+  }
+  if (!tf_problem.empty())
+  {
+    if (!have_T_ || lift_m_ <= 0.0)
+    {
+      stop(tf_problem + ".", BT::NodeStatus::FAILURE);
+      return;
+    }
+    finish(tf_problem + ".", BT::NodeStatus::FAILURE, now);  // no-op if already finishing
+    lift_ = std::min(lift_m_, lift_ + lift_speed_ * dt);
+    if (lift_ >= lift_m_ - 1e-9 || now.seconds() > finish_deadline_)
+    {
+      stop(finish_msg_ + " (lift done open loop: no fresh focal pose)", finish_result_);
+      return;
+    }
+    std::lock_guard<std::mutex> lk(cmd_mutex_);
+    if (!done_)
+    {
+      publishTwist(lift_speed_ * lift_dir_, Eigen::Vector3d::Zero());
+    }
     return;
   }
+  const Eigen::Isometry3d T_world_focal = last_T_;
   SunMeasurement sun;
   {
     std::lock_guard<std::mutex> lk(mutex_);
@@ -561,8 +686,14 @@ void TrackRasterWithSun::controlStep()
   {
     finish(fmt::format("No sun-camera frames for {:.1f} s (camera, its USB link or camera_info is down).", frame_age),
            BT::NodeStatus::FAILURE, now);
+    if (done_)
+    {
+      return;  // lift_m = 0: stopped outright
+    }
   }
   const bool sun_fresh = sun.valid && (now - sun.stamp).seconds() < sun_timeout_;
+
+  lift_dir_ = T_world_focal.linear().col(2);  // lift along the current lens axis (it turns with the sun)
 
   // Finishing: lift the focus off the bed (lens held still), then report the stored result.
   if (finishing_)
@@ -578,14 +709,19 @@ void TrackRasterWithSun::controlStep()
            finish_result_);
       return;
     }
-    const Eigen::Vector3d v = clampNorm((lift_ < lift_m_ ? lift_speed_ : 0.0) * lift_dir_ + gain_pos_ * err, max_lin_);
+    // Lens follows the predicted sun while lifting (zero without feedforward); no roll component. The lifted
+    // reference sits lift_ along the turning axis, so it moves at lift_ * (w x axis): feed that forward too.
+    const Eigen::Vector3d w_fin = w_ff_ - w_ff_.dot(lift_dir_) * lift_dir_;
+    const Eigen::Vector3d v = clampNorm((lift_ < lift_m_ ? lift_speed_ : 0.0) * lift_dir_ +
+                                            lift_ * w_fin.cross(lift_dir_) + gain_pos_ * err,
+                                        max_lin_);
     std_msgs::msg::Float64 lift_msg;
     lift_msg.data = lift_;
     lift_pub_->publish(lift_msg);
     std::lock_guard<std::mutex> lk(cmd_mutex_);
     if (!done_)
     {
-      publishTwist(v, Eigen::Vector3d::Zero());
+      publishTwist(v, w_fin);
     }
     return;
   }
@@ -677,6 +813,31 @@ void TrackRasterWithSun::controlStep()
     over_since_ = -1.0;
   }
 
+  // Hold band: above scan_tolerance (after a short debounce) the path stops and the focus lifts at once, so nothing is
+  // sintered off target and the spot does not dwell focused; re-acquiring to acquire_tolerance gives hysteresis.
+  if (acquired_ && sun_fresh && point_err > scan_tol_)
+  {
+    if (over_scan_since_ < 0.0)
+    {
+      over_scan_since_ = now.seconds();
+      over_scan_seq_ = sun.seq;
+    }
+    else if (now.seconds() - over_scan_since_ > hold_lift_s_ && sun.seq > over_scan_seq_)  // >= 2 frames over
+    {
+      over_scan_since_ = -1.0;
+      acquired_ = false;
+      paused_ = true;  // re-acquire, then resume at the same arc length
+      shared_resources_->logger->publishWarnMessage(
+          name(), fmt::format("Sun error {:.3f} deg above the {:.3f} deg scan band for {:.1f} s at {:.1f} mm: lifting "
+                              "the focus and re-acquiring.",
+                              point_err * 180.0 / M_PI, scan_tol_ * 180.0 / M_PI, hold_lift_s_, 1e3 * s_.load()));
+    }
+  }
+  else
+  {
+    over_scan_since_ = -1.0;
+  }
+
   // Defocus lift: up whenever the sun is not locked, down once it is. The path only advances fully down and locked,
   // so the spot is never focused on one point while the lens waits.
   const double lift_target = (acquired_ && sun_fresh) ? 0.0 : lift_m_;
@@ -684,7 +845,46 @@ void TrackRasterWithSun::controlStep()
   lift_ = lift_target > lift_ ? std::min(lift_target, lift_ + lift_speed_ * dt) :
                                 std::max(lift_target, lift_ - lift_speed_ * dt);
   const double lift_rate = dt > 0.0 ? (lift_ - lift_prev) / dt : 0.0;
-  const bool scanning = sun_fresh && acquired_ && lift_ <= 1e-9;
+  // Resume only once the descent has settled (the arm lags ~2 mm along the lift on hardware).
+  if (lift_ > 1e-9)
+  {
+    descended_ = false;
+    descend_since_ = -1.0;
+  }
+  else if (!descended_)
+  {
+    // Gate on the error ACROSS the lens axis (spot placement) and allow the along-axis lag (~2 mm on hardware)
+    // inside the depth of focus; a timeout stops a slow final approach from becoming a focused dwell.
+    if (descend_since_ < 0.0)
+    {
+      descend_since_ = now.seconds();
+    }
+    const Eigen::Vector3d e0 = path_->point(s_.load()) - T_world_focal.translation();
+    const double e_along = e0.dot(lift_dir_);
+    const double e_across = (e0 - e_along * lift_dir_).norm();
+    if (e_across < resume_tol_ && std::abs(e_along) < kDepthOfFocusM)
+    {
+      descended_ = true;
+    }
+    else if (now.seconds() - descend_since_ > kSettleTimeoutS)
+    {
+      if (e_across > kMaxResumeAcrossM || std::abs(e_along) > kDepthOfFocusM)
+      {
+        finish(fmt::format("Descent did not settle in {:.0f} s: focus {:.2f} mm across / {:.2f} mm along the lens "
+                           "axis from the path (limits {:.2f} / {:.2f} mm).",
+                           kSettleTimeoutS, 1e3 * e_across, 1e3 * e_along, 1e3 * kMaxResumeAcrossM,
+                           1e3 * kDepthOfFocusM),
+               BT::NodeStatus::FAILURE, now);
+        return;
+      }
+      shared_resources_->logger->publishWarnMessage(
+          name(), fmt::format("Resuming after a slow descent: {:.2f} mm across / {:.2f} mm along the lens axis.",
+                              1e3 * e_across, 1e3 * e_along));
+      descended_ = true;
+    }
+  }
+  // The pointing hold band is debounced above (it clears acquired_), so a single noisy frame does not stall the path.
+  const bool scanning = sun_fresh && acquired_ && lift_ <= 1e-9 && descended_;
   if (scanning)
   {
     s_ = std::min(s_.load() + speed_ * dt, path_->length());
@@ -693,14 +893,30 @@ void TrackRasterWithSun::controlStep()
   const double s_now = s_.load();
   const Eigen::Vector3d p_ref = path_->point(s_now) + lift_ * lift_dir_;
   const Eigen::Vector3d err = p_ref - p;
-  if (err.norm() > max_track_err_)
+  // While the focus is (or was just) moving along the lift direction, the arm lags along it (driver P loop + arm
+  // response, ~2 mm at 3 mm/s on the JACO2). That lag only moves the focus up/down, not across the bed, so check the
+  // across-lift error against the normal limit and the along-lift error against a 3x looser one.
+  const bool lifting = lift_ > 1e-9 || std::abs(lift_rate) > 0.0 || !descended_;
+  const double along = err.dot(lift_dir_);
+  const double across = (err - along * lift_dir_).norm();
+  if (lifting ? (across > max_track_err_ || std::abs(along) > 3.0 * max_track_err_) : err.norm() > max_track_err_)
   {
-    finish(fmt::format("Focal point {:.2f} mm off the path (limit {:.2f} mm).", 1e3 * err.norm(),
-                       1e3 * max_track_err_),
+    finish(lifting ? fmt::format("Focal point {:.2f} mm off the lifted reference across / {:.2f} mm along the lift "
+                                 "(limits {:.2f} / {:.2f} mm).",
+                                 1e3 * across, 1e3 * along, 1e3 * max_track_err_, 3e3 * max_track_err_) :
+                     fmt::format("Focal point {:.2f} mm off the path (limit {:.2f} mm).", 1e3 * err.norm(),
+                                 1e3 * max_track_err_),
            BT::NodeStatus::FAILURE, now);
     return;
   }
   const bool at_end = s_now >= path_->length() - 1e-9;
+  if (at_end && lift_ > 1e-9)
+  {
+    // Sun lost or out of band at the last point: the path is done, so do not descend (and dwell focused) again.
+    finish("Path complete (the focus was lifted at the end point; not descending again).", BT::NodeStatus::SUCCESS,
+           now);
+    return;
+  }
   if (at_end && lift_ <= 1e-9)
   {
     if (at_end_since_ < 0.0)
@@ -717,13 +933,19 @@ void TrackRasterWithSun::controlStep()
     }
   }
 
-  const Eigen::Vector3d v_ff = ((scanning && !at_end) ? Eigen::Vector3d(speed_ * path_->tangent(s_now))
-                                                       : Eigen::Vector3d(Eigen::Vector3d::Zero())) +
-                               lift_rate * lift_dir_;
-  const Eigen::Vector3d v = clampNorm(v_ff + gain_pos_ * err, max_lin_);
   const Eigen::Vector3d w_focal =
       sun_fresh ? sunErrorToFocalAngularVelocity(sun.vx, sun.vy, gain_rot_) : Eigen::Vector3d(Eigen::Vector3d::Zero());
-  Eigen::Vector3d w = clampNorm(T_world_focal.linear() * w_focal, max_ang_);
+  // Feedback on the measured error plus the predicted sun motion (also while the sun is hidden). The feedforward is
+  // projected perpendicular to the lens axis: its component along the sun line (Omega*sin(declination)) would only
+  // roll the lens, which the roll selection assumes is held.
+  const Eigen::Vector3d w_ff_perp = w_ff_ - w_ff_.dot(lift_dir_) * lift_dir_;
+  Eigen::Vector3d w = clampNorm(T_world_focal.linear() * w_focal + w_ff_perp, max_ang_);
+  // The lifted reference sits lift_ along the lens axis, which turns at w: it moves at lift_ * (w x axis) (~0.5 mm/min
+  // at 80 mm with the sun rate alone). A roll added below is along the axis and does not change this term.
+  const Eigen::Vector3d v_ff = ((scanning && !at_end) ? Eigen::Vector3d(speed_ * path_->tangent(s_now))
+                                                       : Eigen::Vector3d(Eigen::Vector3d::Zero())) +
+                               lift_rate * lift_dir_ + lift_ * w.cross(lift_dir_);
+  const Eigen::Vector3d v = clampNorm(v_ff + gain_pos_ * err, max_lin_);
 
   // Singularity: monitor dexterity and (optionally) use the free roll to climb away from singularities.
   if (dex_)
@@ -886,8 +1108,14 @@ void TrackRasterWithSun::logTiming()
                           stats(step), stats(dex), stats(det), stats(per), 1000.0 / rate_hz_));
 }
 
+TrackRasterWithSun::~TrackRasterWithSun()
+{
+  teardown();
+}
+
 void TrackRasterWithSun::teardown()
 {
+  // Called on the BT thread only (never from a callback, which would deadlock on the guard).
   if (timer_)
   {
     timer_->cancel();
@@ -896,5 +1124,10 @@ void TrackRasterWithSun::teardown()
   image_sub_.reset();
   info_sub_.reset();
   js_sub_.reset();
+  if (cb_guard_)
+  {
+    std::unique_lock<std::shared_mutex> lk(cb_guard_->m);  // waits for callbacks in flight
+    cb_guard_->alive = false;
+  }
 }
 }  // namespace sun_pose_finder

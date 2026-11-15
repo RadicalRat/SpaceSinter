@@ -92,6 +92,14 @@ BT::PortsList KeepBestRoll::providedPorts()
     BT::OutputPort<geometry_msgs::msg::Quaternion>("best_orientation", "{sun_orientation}",
                                                    "Orientation of the best candidate so far."),
     BT::OutputPort<std::string>("best_name", "{best_roll_name}", "Label of the best candidate so far."),
+    BT::InputPort<moveit_studio_agent_msgs::msg::RobotJointState>("candidate_joint_state",
+                                                                   "Optional: joint state that goes with this "
+                                                                   "candidate (e.g. its scan seed)."),
+    BT::InputPort<bool>("require_joint_state", false, "Fail (keeping the previous best) if candidate_joint_state is "
+                                                      "missing, so the best orientation and its seed cannot "
+                                                      "come from different candidates."),
+    BT::OutputPort<moveit_studio_agent_msgs::msg::RobotJointState>("best_joint_state", "{best_scan_seed}",
+                                                                    "Joint state of the best candidate so far."),
   };
 }
 
@@ -110,6 +118,13 @@ BT::NodeStatus KeepBestRoll::tick()
     shared_resources_->logger->publishFailureMessage(name(), "Missing candidate_score or candidate_orientation.");
     return BT::NodeStatus::FAILURE;
   }
+  const auto js = getInput<moveit_studio_agent_msgs::msg::RobotJointState>("candidate_joint_state");
+  if (!js && getInput<bool>("require_joint_state").value_or(false))
+  {
+    shared_resources_->logger->publishFailureMessage(name(), "require_joint_state is set but candidate_joint_state "
+                                                             "is missing.");
+    return BT::NodeStatus::FAILURE;
+  }
   const double best = getInput<double>("best_score_in").value_or(-1.0);
   const std::string label = getInput<std::string>("candidate_name").value_or("");
   shared_resources_->logger->publishInfoMessage(name(), fmt::format("{}: worst-point dexterity {:.3f}", label, *score));
@@ -120,6 +135,10 @@ BT::NodeStatus KeepBestRoll::tick()
     setOutput("best_score_out", *score);
     setOutput("best_orientation", *q);
     setOutput("best_name", label);
+    if (js)
+    {
+      setOutput("best_joint_state", *js);
+    }
   }
   return BT::NodeStatus::SUCCESS;
 }

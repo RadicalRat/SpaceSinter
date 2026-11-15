@@ -9,7 +9,7 @@ sim_sun_camera:
     # GetImage subscribes fresh each tick, so a frame is up to 1/rate old.
     publish_rate_hz: 30.0
     # The calibration is for the real camera's 1280x720 mode; 1.0 matches it.
-    image_scale: 1.0
+    image_scale: 0.25
 
     # Sun placement:
     #   in_view — at startup, put the sun just off the camera axis by
@@ -24,7 +24,7 @@ sim_sun_camera:
     # Sun motion for testing continuous tracking: turns the sun about sun_drift_axis (empty = the Earth's polar
     # axis for latitude_deg / north_heading_deg, i.e. the real diurnal path) at this rate, by real elapsed time.
     # The real rate is 15 deg/h = 0.004178 deg/s; 0.008356 = 2x real (2026-11-11 test).
-    sun_drift_deg_per_s: 0.008356
+    sun_drift_deg_per_s: 0.004178
     sun_drift_axis: [0.0]
     latitude_deg: 39.7555
     north_heading_deg: 125.0
@@ -40,7 +40,7 @@ sim_sun_camera:
 
     # Appearance.  The detector thresholds at 240, so only the saturated
     # core counts toward blob size; the halo is cosmetic.
-    sun_angular_diameter_deg: 1.5
+    sun_angular_diameter_deg: 4.0
     halo_scale: 1.5
     background_level: 12
     noise_stddev: 3.0
