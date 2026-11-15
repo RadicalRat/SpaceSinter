@@ -16,7 +16,13 @@ namespace
 {
 constexpr double kDepthOfFocusM = 0.003;  // R4: +-3 mm standoff tolerance
 constexpr double kTfStaleS = 0.5;        // focal-frame TF older than this: the loop is blind
-constexpr double kSettleTimeoutS = 2.0;   // longest wait for the descent to settle before resuming
+constexpr double kSettleTimeoutS = 2.0;
+// Lift acceleration: the JACO2 joints lag the command by qdot/kp (driver kp 5/s), so a velocity STEP tilts the lens
+// ~0.3-0.5 deg and shifts the focus ~3 mm (Trial13). Ramp instead: 0 -> 3 mm/s in 1 s.
+constexpr double kLiftAccel = 0.003;
+constexpr double kLiftDecelPlan = 0.8 * kLiftAccel;  // stopping profile planned with margin: no overshoot/snap
+constexpr double kConvergedFraction = 0.5;  // start offset counts as closed below this x max_tracking_error_m
+constexpr double kConvergeTimeoutS = 15.0;  // ... and must close within this   // longest wait for the descent to settle before resuming
 constexpr double kMaxResumeAcrossM = 0.001;  // after that wait, resume only within 1 mm of the path (else fail)
 constexpr auto kPathPort = "path";
 constexpr auto kSpeedPort = "scan_speed_mps";
@@ -153,7 +159,7 @@ BT::PortsList TrackRasterWithSun::providedPorts()
     BT::InputPort<double>("sun_timeout_s", 0.5, "No sun for this long: hold the lens and pause the path."),
     BT::InputPort<double>("sun_lost_abort_s", 0.0, "No sun for this long: fail. 0 = never (pause until the sun "
                                                    "returns)."),
-    BT::InputPort<double>("scan_tolerance_rad", 0.004, "Hold band: the path only advances while the sun error is "
+    BT::InputPort<double>("scan_tolerance_rad", 0.005, "Hold band: the path only advances while the sun error is "
                                                        "below this (keep it under R2 = atan(R1/f) ~ 0.0054 rad)."),
     BT::InputPort<double>("hold_lift_s", 0.1, "Debounce: if the sun error stays above scan_tolerance_rad this long "
                                               "(a few frames, so one noisy frame does not trigger it), the path stops "
@@ -187,7 +193,8 @@ BT::PortsList TrackRasterWithSun::providedPorts()
                                                    "down, not a cloud): fail, so the objective can retreat. "
                                                    "0 = never."),
     BT::InputPort<double>("start_tolerance_m", 0.005, "Fail at start if the focal point is farther than this from "
-                                                      "the path point at start_at_m."),
+                                                      "the path point at start_at_m (lifted if start_lifted). A "
+                                                      "smaller offset is closed before the sun is acquired."),
     BT::InputPort<double>("finish_tolerance_m", 0.0005, "Succeed once the reference is at the end and the focal "
                                                         "point is within this of it."),
     BT::InputPort<double>("aim_offset_x_rad", 0.0, "As SunPoseFinder: where the sun sits (tan, image +x) when the "
@@ -257,8 +264,7 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   max_point_err_ = mpe;
   sun_timeout_ = st;
   sun_abort_ = sa;
-  // A start farther off than the tracking limit would pass here and then fail on the first tick: use the tighter.
-  start_tol_ = std::min(start_tol, max_track_err_);
+  start_tol_ = start_tol;  // up to this is closed at the start (see converged_) before the normal tracking limit
   finish_tol_ = finish_tol;
   aim_x_ = ax;
   aim_y_ = ay;
@@ -272,7 +278,7 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   dex_length_ = getInput<double>("dexterity_length_m").value_or(0.4);
   camera_timeout_ = getInput<double>("camera_timeout_s").value_or(3.0);
   lift_m_ = std::max(0.0, getInput<double>("lift_m").value_or(0.03));
-  scan_tol_ = getInput<double>("scan_tolerance_rad").value_or(0.004);
+  scan_tol_ = getInput<double>("scan_tolerance_rad").value_or(0.005);
   hold_lift_s_ = getInput<double>("hold_lift_s").value_or(0.1);
   resume_tol_ = getInput<double>("resume_tolerance_m").value_or(0.0005);
   over_scan_since_ = -1.0;
@@ -352,6 +358,13 @@ BT::NodeStatus TrackRasterWithSun::onStart()
                                   std::string()));
       return BT::NodeStatus::FAILURE;
     }
+    converged_ = (p0 - start).norm() < kConvergedFraction * max_track_err_;
+    if (!converged_)
+    {
+      shared_resources_->logger->publishInfoMessage(
+          name(), fmt::format("Starting {:.1f} mm from the {}start point: closing that before acquiring the sun.",
+                              1e3 * (p0 - start).norm(), start_lifted ? "lifted " : ""));
+    }
   }
   catch (const tf2::TransformException& e)
   {
@@ -375,6 +388,8 @@ BT::NodeStatus TrackRasterWithSun::onStart()
   path_.emplace(std::move(pts));
   s_ = std::clamp(start_at, 0.0, path_->length());
   lift_ = start_lifted ? lift_m_ : 0.0;  // after the reset of lift_ above
+  lift_vel_ = 0.0;
+  descent_hold_ = false;
   paused_ = false;
   ever_acquired_ = false;
   setOutput("progress_m", s_.load());
@@ -660,7 +675,7 @@ void TrackRasterWithSun::controlStep()
       return;
     }
     finish(tf_problem + ".", BT::NodeStatus::FAILURE, now);  // no-op if already finishing
-    lift_ = std::min(lift_m_, lift_ + lift_speed_ * dt);
+    stepLift(lift_m_, dt);
     if (lift_ >= lift_m_ - 1e-9 || now.seconds() > finish_deadline_)
     {
       stop(finish_msg_ + " (lift done open loop: no fresh focal pose)", finish_result_);
@@ -669,7 +684,7 @@ void TrackRasterWithSun::controlStep()
     std::lock_guard<std::mutex> lk(cmd_mutex_);
     if (!done_)
     {
-      publishTwist(lift_speed_ * lift_dir_, Eigen::Vector3d::Zero());
+      publishTwist(lift_vel_ * lift_dir_, Eigen::Vector3d::Zero());
     }
     return;
   }
@@ -698,7 +713,7 @@ void TrackRasterWithSun::controlStep()
   // Finishing: lift the focus off the bed (lens held still), then report the stored result.
   if (finishing_)
   {
-    lift_ = std::min(lift_m_, lift_ + lift_speed_ * dt);
+    stepLift(lift_m_, dt);
     const Eigen::Vector3d p_ref = path_->point(s_.load()) + lift_ * lift_dir_;
     const Eigen::Vector3d err = p_ref - T_world_focal.translation();
     const bool lifted = lift_ >= lift_m_ - 1e-9 && err.norm() < 0.002;
@@ -712,7 +727,7 @@ void TrackRasterWithSun::controlStep()
     // Lens follows the predicted sun while lifting (zero without feedforward); no roll component. The lifted
     // reference sits lift_ along the turning axis, so it moves at lift_ * (w x axis): feed that forward too.
     const Eigen::Vector3d w_fin = w_ff_ - w_ff_.dot(lift_dir_) * lift_dir_;
-    const Eigen::Vector3d v = clampNorm((lift_ < lift_m_ ? lift_speed_ : 0.0) * lift_dir_ +
+    const Eigen::Vector3d v = clampNorm(lift_vel_ * lift_dir_ +
                                             lift_ * w_fin.cross(lift_dir_) + gain_pos_ * err,
                                         max_lin_);
     std_msgs::msg::Float64 lift_msg;
@@ -748,7 +763,7 @@ void TrackRasterWithSun::controlStep()
   // Acquire: hold the path start until the lens is on the sun.
   if (!acquired_)
   {
-    if (sun_fresh && std::atan(std::hypot(sun.vx, sun.vy)) < acquire_tol_)
+    if (converged_ && sun_fresh && std::atan(std::hypot(sun.vx, sun.vy)) < acquire_tol_)
     {
       acquired_ = true;
       ever_acquired_ = true;
@@ -822,9 +837,27 @@ void TrackRasterWithSun::controlStep()
       over_scan_since_ = now.seconds();
       over_scan_seq_ = sun.seq;
     }
-    else if (now.seconds() - over_scan_since_ > hold_lift_s_ && sun.seq > over_scan_seq_)  // >= 2 frames over
+    else if (now.seconds() - over_scan_since_ > hold_lift_s_ && sun.seq > over_scan_seq_ &&  // >= 2 frames over
+             lift_ > kDepthOfFocusM)
+    {
+      // Still defocused (descending): out of band does no harm here. Stop descending (ramped, no reversal: a
+      // reversal's joint-lag transient re-trips the band, Trial13's limit cycle) until back inside the acquire band.
+      over_scan_since_ = -1.0;
+      if (!descent_hold_)
+      {
+        descent_hold_ = true;
+        descent_hold_target_ = std::clamp(lift_ - lift_vel_ * std::abs(lift_vel_) / (2.0 * kLiftDecelPlan), 0.0, lift_m_);
+        shared_resources_->logger->publishWarnMessage(
+            name(), fmt::format("Sun error {:.3f} deg above the {:.3f} deg scan band while descending: holding the "
+                                "focus {:.1f} mm up until it is back within {:.3f} deg.",
+                                point_err * 180.0 / M_PI, scan_tol_ * 180.0 / M_PI, 1e3 * descent_hold_target_,
+                                acquire_tol_ * 180.0 / M_PI));
+      }
+    }
+    else if (now.seconds() - over_scan_since_ > hold_lift_s_ && sun.seq > over_scan_seq_)
     {
       over_scan_since_ = -1.0;
+      descent_hold_ = false;
       acquired_ = false;
       paused_ = true;  // re-acquire, then resume at the same arc length
       shared_resources_->logger->publishWarnMessage(
@@ -837,13 +870,20 @@ void TrackRasterWithSun::controlStep()
   {
     over_scan_since_ = -1.0;
   }
+  if (descent_hold_ && (!acquired_ || !sun_fresh || point_err < acquire_tol_))
+  {
+    descent_hold_ = false;  // back in the acquire band (or lost: the lift goes up anyway)
+    if (acquired_ && sun_fresh)
+    {
+      shared_resources_->logger->publishInfoMessage(name(), "Sun back in band: continuing the descent.");
+    }
+  }
 
-  // Defocus lift: up whenever the sun is not locked, down once it is. The path only advances fully down and locked,
-  // so the spot is never focused on one point while the lens waits.
-  const double lift_target = (acquired_ && sun_fresh) ? 0.0 : lift_m_;
+  // Defocus lift: up whenever the sun is not locked, down once it is (held while out of band during the descent).
+  // The path only advances fully down and locked, so the spot is never focused on one point while the lens waits.
+  const double lift_target = !(acquired_ && sun_fresh) ? lift_m_ : descent_hold_ ? descent_hold_target_ : 0.0;
   const double lift_prev = lift_;
-  lift_ = lift_target > lift_ ? std::min(lift_target, lift_ + lift_speed_ * dt) :
-                                std::max(lift_target, lift_ - lift_speed_ * dt);
+  stepLift(lift_target, dt);
   const double lift_rate = dt > 0.0 ? (lift_ - lift_prev) / dt : 0.0;
   // Resume only once the descent has settled (the arm lags ~2 mm along the lift on hardware).
   if (lift_ > 1e-9)
@@ -899,11 +939,33 @@ void TrackRasterWithSun::controlStep()
   const bool lifting = lift_ > 1e-9 || std::abs(lift_rate) > 0.0 || !descended_;
   const double along = err.dot(lift_dir_);
   const double across = (err - along * lift_dir_).norm();
-  if (lifting ? (across > max_track_err_ || std::abs(along) > 3.0 * max_track_err_) : err.norm() > max_track_err_)
+  // Defocused (lift above the depth of focus) a sideways error burns nothing: allow 3x, which still catches a stuck or
+  // runaway arm. Lens corrections while lifted move the focus a few mm through the joint lag (Trial15: 3.01 mm while
+  // correcting 0.4 deg at 80 mm). The settle gate re-centres to resume_tolerance before any scanning.
+  const double across_lim = lift_ > kDepthOfFocusM ? 3.0 * max_track_err_ : max_track_err_;
+  if (!converged_)
+  {
+    // Closing the start offset: only acquisition is held back; fail if it grows or takes too long.
+    if (err.norm() < kConvergedFraction * max_track_err_)
+    {
+      converged_ = true;
+      shared_resources_->logger->publishInfoMessage(
+          name(), fmt::format("At the start point ({:.2f} mm) after {:.1f} s.", 1e3 * err.norm(),
+                              (now - start_time_).seconds()));
+    }
+    else if (err.norm() > start_tol_ + 0.002 || (now - start_time_).seconds() > kConvergeTimeoutS)
+    {
+      finish(fmt::format("Did not reach the start point: {:.2f} mm off after {:.1f} s (start tolerance {:.1f} mm).",
+                         1e3 * err.norm(), (now - start_time_).seconds(), 1e3 * start_tol_),
+             BT::NodeStatus::FAILURE, now);
+      return;
+    }
+  }
+  else if (lifting ? (across > across_lim || std::abs(along) > 3.0 * max_track_err_) : err.norm() > max_track_err_)
   {
     finish(lifting ? fmt::format("Focal point {:.2f} mm off the lifted reference across / {:.2f} mm along the lift "
                                  "(limits {:.2f} / {:.2f} mm).",
-                                 1e3 * across, 1e3 * along, 1e3 * max_track_err_, 3e3 * max_track_err_) :
+                                 1e3 * across, 1e3 * along, 1e3 * across_lim, 3e3 * max_track_err_) :
                      fmt::format("Focal point {:.2f} mm off the path (limit {:.2f} mm).", 1e3 * err.norm(),
                                  1e3 * max_track_err_),
            BT::NodeStatus::FAILURE, now);
@@ -1106,6 +1168,29 @@ void TrackRasterWithSun::logTiming()
       name(), fmt::format("Timing: control step {} | dexterity part {} | sun detection per frame {} | tick period {} "
                           "(target {:.1f} ms)",
                           stats(step), stats(dex), stats(det), stats(per), 1000.0 / rate_hz_));
+}
+
+void TrackRasterWithSun::stepLift(double target, double dt)
+{
+  if (dt <= 0.0)
+  {
+    return;
+  }
+  const double gap = target - lift_;
+  // Fastest speed from which the ramp can still stop at the target.
+  const double v_des = std::copysign(std::min(lift_speed_, std::sqrt(2.0 * kLiftDecelPlan * std::abs(gap))), gap);
+  lift_vel_ += std::clamp(v_des - lift_vel_, -kLiftAccel * dt, kLiftAccel * dt);
+  const double next = lift_ + lift_vel_ * dt;
+  if ((gap >= 0.0 && next >= target && lift_vel_ >= 0.0) || (gap <= 0.0 && next <= target && lift_vel_ <= 0.0))
+  {
+    lift_ = target;  // arrived (the profile is already ~0 here)
+    lift_vel_ = 0.0;
+  }
+  else
+  {
+    lift_ = next;
+  }
+  lift_ = std::clamp(lift_, 0.0, lift_m_);
 }
 
 TrackRasterWithSun::~TrackRasterWithSun()

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Record a sintering trial to a rosbag (internal disk for now, see BAG_ROOT below).
+# Record a sintering trial to a rosbag on the WD Elements drive (see BAG_ROOT below).
 #
-#   scripts/record_trial.sh [options] [label]   start recording (Ctrl-C stops it), then start the trial
+#   scripts/record_trial.sh [options] [note]    start recording (Ctrl-C stops it), then start the trial
 #   scripts/record_trial.sh stop                stop a recording started with --detach
 #   scripts/record_trial.sh status              show whether a recording is running
 #
@@ -10,16 +10,17 @@
 #   --depth        also record the RealSense point cloud (large)
 #   --rebuild      rebuild the recorder image first
 #
-# Each run writes <SINTER_BAG_DIR>/<YYYY-MM-DD_HHMMSS>_<label>/ (an MCAP bag, zstd-compressed) plus a
+# Trials are numbered automatically: the next TrialN after the highest already on the drive (or in ~/sinter_bags);
+# an optional note is appended (record_trial.sh dry_run -> ..._Trial13_dry_run).
+# Each run writes <SINTER_BAG_DIR>/<YYYY-MM-DD_HHMMSS>_TrialN[_note]/ (an MCAP bag, zstd-compressed) plus a
 # <same name>.trial.yaml with auto-captured metadata (time, git commit, objective tunables). The MoveIt Pro stack must
 # be running; the recorder joins its ROS graph from its own container, so nothing in the stack is touched.
 set -euo pipefail
 
-# For now bags go to the internal disk (one USB port short for the Seagate); move them to
-# "/media/cameron/Seagate Portable Drive/sinter_bags" after a trial. To record straight to the Seagate again, set
-# SINTER_BAG_DRIVE="/media/cameron/Seagate Portable Drive" SINTER_BAG_DIR="$SINTER_BAG_DRIVE/sinter_bags".
-BAG_ROOT="${SINTER_BAG_DIR:-$HOME/sinter_bags}"
-DRIVE="${SINTER_BAG_DRIVE:-/}"
+# Bags go straight to the WD Elements drive (NTFS). To record elsewhere, set SINTER_BAG_DRIVE (a mount point) and
+# SINTER_BAG_DIR, e.g. SINTER_BAG_DRIVE=/ SINTER_BAG_DIR=$HOME/sinter_bags for the internal disk.
+DRIVE="${SINTER_BAG_DRIVE:-/media/cameron/Elements}"
+BAG_ROOT="${SINTER_BAG_DIR:-$DRIVE/sinter_bags}"
 STACK_CONTAINER=moveit_pro-agent_bridge-1
 RECORDER=sinter_recorder
 IMAGE=sinter-recorder:latest
@@ -88,10 +89,14 @@ if $rebuild || [ -z "$(docker images -q "$IMAGE")" ]; then
   docker build -q -t "$IMAGE" --build-arg BASE_IMAGE="$base" -f "$REPO_DIR/scripts/recorder.Dockerfile" "$REPO_DIR/scripts" >/dev/null
 fi
 
-name="$(date +%Y-%m-%d_%H%M%S)"
-# Only [A-Za-z0-9._-] in the label: it becomes part of a path, a shell command in the recorder and the YAML.
-label=$(printf '%s' "$label" | tr -c 'A-Za-z0-9._-' '_')
-[ -n "$label" ] && name="${name}_${label}"
+# Next trial number: highest TrialN in any bag name on the drive or the internal-disk copies, plus one.
+last=$( { ls -1 "$BAG_ROOT" "$HOME/sinter_bags" 2>/dev/null || true; } | grep -oE '_Trial[0-9]+' | tr -dc '0-9\n' |
+        sort -n | tail -1)
+trial="Trial$(( ${last:-0} + 1 ))"
+# Only [A-Za-z0-9._-] in the note: it becomes part of a path, a shell command in the recorder and the YAML.
+note=$(printf '%s' "$label" | tr -c 'A-Za-z0-9._-' '_')
+label="$trial${note:+_$note}"
+name="$(date +%Y-%m-%d_%H%M%S)_$label"
 mkdir -p "$BAG_ROOT"
 
 # Use the stack's own DDS config so the recorder discovers its nodes (loopback only, no multicast).

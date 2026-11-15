@@ -109,6 +109,8 @@ private:
   /// Lift the focus off the bed (if lift_m > 0), then stop with this result.
   void finish(const std::string& why, BT::NodeStatus result, const rclcpp::Time& now);
   void teardown();
+  /// Moves lift_ toward target with lift_speed_ and a kLiftAccel ramp (no velocity steps); updates lift_vel_.
+  void stepLift(double target, double dt);
 
   // Parameters (read in onStart)
   std::string world_frame_, focal_frame_, command_topic_;
@@ -135,6 +137,12 @@ private:
   // Hold band / resume: the path advances only with pointing inside scan_tol_ and the focus settled back on the bed.
   double scan_tol_ = 0.004, hold_lift_s_ = 0.1, resume_tol_ = 0.0005, over_scan_since_ = -1.0, descend_since_ = -1.0;
   bool descended_ = false;
+  // Start convergence: a planned lead-in can end a few mm off (trajectory controller goal tolerance + JACO2
+  // steady-state joint error). Close that first (no acquisition, so the focus stays lifted), then track normally.
+  bool converged_ = true;
+  double lift_vel_ = 0.0;        // m/s, ramped
+  bool descent_hold_ = false;    // out of band while still defocused: hold the height instead of re-lifting
+  double descent_hold_target_ = 0.0;
   uint64_t over_scan_seq_ = 0;  // frame that started the current over-band interval
   uint64_t frame_seq_ = 0;
   Eigen::Isometry3d last_T_ = Eigen::Isometry3d::Identity();  // last fresh focal pose

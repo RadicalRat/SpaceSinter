@@ -69,6 +69,8 @@ def generated(pad="0.01"):
       </Control>
       <!--Lead-in: planned, collision-checked move to the scored seed configuration = raster point 0 lifted lift_m along the lens axis (defocused). The tracker starts lifted (start_lifted), acquires there, then descends.-->
       <SubTree ID="Move to Joint State" _collapsed="true" target_joint_state="{{best_scan_seed}}" {JTAC} link_padding="{pad}" seed="0" keep_orientation="false" keep_orientation_tolerance="0.05" velocity_scale_factor="{{align_velocity_scale}}" acceleration_scale_factor="1.0" />
+      <!--The trajectory controller reports success within its 0.05 rad goal tolerance while the JACO2 still lags (Trial15: joints at 4-8 deg/s at the hand-over, so the velocity controller stopped it ~5 mm short). Let it settle first.-->
+      <Action ID="WaitForDuration" delay_duration="1.5" />
       {END}'''
 
 
@@ -91,7 +93,7 @@ def patch_hw(s):
     # Parameters
     m = re.search(r'name="Parameters"\s+code="([^"]*)"', s)
     code = m.group(1)
-    for k, v in (("lift_m", "0.08"), ("lift_speed_mps", "0.003"), ("scan_tolerance_rad", "0.004"),
+    for k, v in (("lift_m", "0.08"), ("lift_speed_mps", "0.003"), ("scan_tolerance_rad", "0.005"),
                  ("sun_feedforward", "true"), ("sun_feedforward_scale", "1.0")):
         code = set_param(code, k, v)
     s = s[:m.start(1)] + code + s[m.end(1):]
@@ -104,7 +106,10 @@ def patch_hw(s):
     tr = re.sub(r'sun_feedforward="[^"]*"', 'sun_feedforward="{sun_feedforward}"', tr)
     tr = re.sub(r'sun_feedforward_scale="[^"]*"', 'sun_feedforward_scale="{sun_feedforward_scale}"', tr)
     for k, v in (("start_lifted", "true"), ("scan_tolerance_rad", "{scan_tolerance_rad}"), ("hold_lift_s", "0.1"),
-                 ("resume_tolerance_m", "0.0005")):
+                 ("resume_tolerance_m", "0.0005"),
+                 # The lead-in ends a few mm off on the JACO2 (trajectory goal tolerance + steady-state joint error);
+                 # the tracker closes up to this while lifted, before acquiring.
+                 ("start_tolerance_m", "0.01")):
         tr = re.sub(rf'\s{k}="[^"]*"', "", tr)
         tr = tr.rstrip() + f'\n          {k}="{v}"'
     tr = re.sub(r"\n[ \t]*(?=\n)", "", tr)  # drop whitespace-only lines left by earlier runs

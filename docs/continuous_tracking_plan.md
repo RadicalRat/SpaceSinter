@@ -317,3 +317,47 @@ This is the continuous form of the outline's formulation (lens axis ∥ ŝ(t), F
     (path err mean/p95/max 0.039/0.116/0.247 mm, true pointing 0.004/0.008/0.016 deg, dexterity 0.092);
     hold band (0.5 deg sun step) lifted 7.8 mm, resumed at 14.8 mm, completed; Sun Loss Pause and Stop And Resume
     SUCCESS; Camera Dropout fails by design after lifting. No false TF-stale trips. TF-stale path itself untested.
+- 2026-11-15 HARDWARE, REAL SUN (sinter_robot_hw; Arducam 28 Hz). Two attempts failed the start check at 4.1/4.5 mm:
+  the JTAC accepts a move within default_goal_tolerance 0.05 rad and the JACO2 settles with steady-state joint error;
+  my 3 mm start-tolerance cap (L4) made that fatal. Fix: start convergence (converged_): up to start_tolerance_m
+  (objective 0.01) is closed while lifted before acquiring; fail if > tol+2 mm or > 15 s.
+  TRIAL13 (Elements sinter_bags/2026-11-15_124706_Trial13; gain_rot 0.25, focus_lift -0.06, heading 121): never left
+  0.0 mm. 14 hold-band trips in 45 s, all during the 80 mm DESCENT (spot defocused, lift never < 15 mm); ended on
+  "3.11 mm across the lifted reference" -> lift + retreat. Analysis: not the FF (7.3e-5 rad/s, 10-30x below the
+  feedback); camera noise 0.013 deg/frame, 0.2 % frames without blob. FK from measured joints reproduces the measured
+  pointing swings (e.g. -0.05 -> -0.32 -> +0.10 deg FK vs -0.09 -> -0.38 -> +0.08 measured in 0.5 s, corr 0.64), so
+  real joint motion: each hold reversed the lift (velocity step -3 -> +3 mm/s + feedback, |v_cmd| up to 7 mm/s), the
+  driver's per-joint P loop (kp 5/s, lag = qdot/kp) turned that into 0.3-0.5 deg lens tilt and 3-4 mm focal shift,
+  which re-tripped the 0.229 deg band: a limit cycle. Steady 3 mm/s descent alone: p95 0.22 deg, track err < 1 mm.
+  Fixes (live install, mock not rerun): out-of-band while defocused (lift > 3 mm) now HOLDS the height (ramped stop)
+  until back within acquire_tolerance instead of re-lifting; full lift/re-acquire only when focused. Lift velocity
+  ramped (kLiftAccel 3 mm/s^2, stopping profile at 0.8x; replica sim: no overshoot, residual snap < 0.15 mm/s).
+  scan_tolerance 0.004 -> 0.005 rad (0.29 deg, within R2 ~0.3); gain_rot back to 0.5. Option not taken yet: driver
+  kp 5 -> 10 to halve all lags.
+- 2026-11-15 TRIAL14 (gain_rot 0.5, scan 0.75 mm/s, scan band 0.005, ramped lift + descent hold): FULL RASTER
+  COMPLETED on the real sun (420 mm, 39 points, ~10 min), 80 mm lift at the end; then cancelled by the user during
+  the retreat moves. TRIAL15 (same settings) failed 1.1 s in: "3.01 mm across the lifted reference". Bag: the
+  lead-in Move to Joint State returned while joints still moved 4-8 deg/s (JTAC goal tolerance 0.05 rad, driver lag),
+  so the velocity controller stopped the arm ~5 mm short; then a 0.40-0.45 deg post-lead-in sun error (kinematic
+  error FK misses) was corrected at gain 0.5 while lifted, the wrist joints' lag moved the focus 3 mm sideways.
+  Fixes: WaitForDuration 1.5 s after the lead-in (generator); across-axis limit 3x while the lift is above the depth
+  of focus (strict limit near focus; the settle gate re-centres before scanning).
+- 2026-11-15 VERIFIED REAL-SUN TRIALS (Elements sinter_bags; full raster 420 mm, 39 points, 40 mm square, 2.5 mm
+  spacing, 0.75 mm/s, gain_rot 0.5, band 0.005 rad, focus_lift -0.06, heading 121; all "Path complete" + 80 mm lift,
+  objective then cancelled by the user during the retreat moves):
+  | trial | start | scan s | path err mean/p95/max mm | pointing p50/p95/max deg | min dex | sun el | incidence | DNI |
+  | 14 | 13:16 | 560.0 | 0.51/1.09/1.76 | 0.046/0.143/0.250 | 0.076 | 27.8-27.0 | 30.6-31.4 | 908-930 |
+  | 16 | 13:40 | 563.4 | 0.47/1.02/2.14 | 0.041/0.112/(1 glare frame) | 0.092 | 25.7-24.7 | 34.7-36.1 | 882-899 |
+  | 19 | 14:10 | 560.0 | 0.40/0.88/1.61 | 0.040/0.125/0.218 | 0.099 | 22.5-21.3 | 30.3-31.5 | 825-835 |
+  | 20 | 14:26 | 560.0 | 0.51/1.01/1.60 | 0.040/0.097/0.180 | 0.074 | 20.6-19.4 | 43.2-45.0 | 830 (1 sample) |
+  Speed 0.750 mm/s (0.745 in 16 incl. pauses); 0 frames over the 0.286 deg band; no pointing holds; progress
+  monotonic; camera 28.1 Hz (max gap 0.06 s), joint_states 100 Hz, twist 50 Hz (max gap 40 ms), loop p99 < 1 ms.
+  Planes: 14 tilt 31.6 RMS 1.9 (767 out), 16 30.8/1.8 (491), 19 37.3/0.7 (437), 20 32.2/2.2 (803); raster ~3 cm
+  uphill of the crop centre (focus_lift along the normal). Trial16: two 0.7/1.0 s camera dropouts (spot vanishes,
+  background unchanged: beam blocked by a shadow, DNI steady) at 87.7 and 278.0 mm -> "Sun lost"; with the ramped
+  lift the focus only rose 0.24/0.94 mm (inside the 3 mm depth of focus), so those two spots got ~1.1/2.2 s extra
+  near-focused dwell; one glare frame read 41 deg right after. Path/pointing errors are FK-based / sun-camera
+  measured, not true spot placement (kinematic error FK misses ~0.6 deg/100 mm). Trial20 incidence 43-45 deg (cos 0.72).
+  Discrete Trial 11 for comparison: pointing median 0.093 / p95 0.19 deg; continuous ~2x better. Caveat: all four
+  are git bb794e2-dirty; Trial14 ran before the 13:35 changes (settle wait, 3x lifted across limit), 16-20 after
+  (if the stack was restarted). Commit the current tree to pin 16-20.
