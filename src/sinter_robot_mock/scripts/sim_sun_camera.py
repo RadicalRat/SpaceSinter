@@ -42,7 +42,7 @@ import math
 import numpy as np
 import rclpy
 import yaml
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, Vector3Stamped
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.duration import Duration
@@ -89,6 +89,22 @@ class SimSunCamera(Node):
         p('sun_azimuth_deg', 0.0)
         p('sun_elevation_deg', 45.0)
         p('sun_drift_deg_per_s', 0.0)
+        # Axis the sun turns about (world frame). Empty = the Earth's polar axis for the site below (the real
+        # diurnal motion); [0, 0, 1] = the old vertical-axis drift.
+        p('sun_drift_axis', [0.0])
+        p('latitude_deg', 39.7555)
+        p('north_heading_deg', 125.0)
+        # Measurement noise: Gaussian jitter of the drawn sun centre, pixels (1 sigma per axis). The real Arducam
+        # centroid noise is ~0.1 px (0.007 deg) frame to frame.
+        p('sun_jitter_px', 0.0)
+        # Fault injection: no sun in the image (cloud / occlusion). ~/hide_sun hides it for hide_duration_s.
+        p('sun_hidden', False)
+        p('hide_duration_s', 5.0)
+        self.hidden_until = 0.0
+        # Fault injection: the camera stops publishing entirely (USB dropout). ~/drop_camera does it for
+        # drop_duration_s.
+        p('drop_duration_s', 8.0)
+        self.dropped_until = 0.0
         p('initial_offset_deg', [4.0, -3.0])
         self.angular_diameter_deg = p('sun_angular_diameter_deg', 1.5).value
         self.halo_scale = p('halo_scale', 1.5).value
@@ -121,8 +137,15 @@ class SimSunCamera(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.image_pub = self.create_publisher(Image, '/camera/image_raw', 1)
+        # Ground truth for evaluating trackers: x, y = tan offsets of the true sun from the optical axis (same
+        # convention as /sinter/sun_error), z = true pointing error in rad. No jitter.
+        self.truth_pub = self.create_publisher(Vector3Stamped, '/sim_sun_camera/true_error', 10)
+        self.rng = np.random.default_rng()
+        self.last_tick_time = None
         self.info_pub = self.create_publisher(CameraInfo, '/camera/camera_info', 1)
         self.create_service(Trigger, '~/place_sun_in_view', self._on_place_sun)
+        self.create_service(Trigger, '~/hide_sun', self._on_hide_sun)
+        self.create_service(Trigger, '~/drop_camera', self._on_drop_camera)
         self.add_on_set_parameters_callback(self._on_params)
 
         # Render in its own callback group so the multi-threaded executor keeps
@@ -197,6 +220,22 @@ class SimSunCamera(Node):
             response.message = f'No TF {self.world_frame} → {self.camera_frame}: {e}'
         return response
 
+    def _on_hide_sun(self, _request, response):
+        d = float(self.get_parameter('hide_duration_s').value)
+        self.hidden_until = self.get_clock().now().nanoseconds * 1e-9 + d
+        response.success = True
+        response.message = f'Sun hidden for {d:.1f} s'
+        self.get_logger().info(response.message)
+        return response
+
+    def _on_drop_camera(self, _request, response):
+        d = float(self.get_parameter('drop_duration_s').value)
+        self.dropped_until = self.get_clock().now().nanoseconds * 1e-9 + d
+        response.success = True
+        response.message = f'Camera frames dropped for {d:.1f} s'
+        self.get_logger().info(response.message)
+        return response
+
     def _on_params(self, params):
         values = {prm.name: prm.value for prm in params}
         if 'sun_azimuth_deg' in values or 'sun_elevation_deg' in values:
@@ -221,16 +260,33 @@ class SimSunCamera(Node):
         if self.sun_dir is None:
             self._place_sun_in_view(r_cam_world)
 
+        # Sun motion over the real elapsed time (rendering often runs slower than publish_rate_hz).
+        now_s = self.get_clock().now().nanoseconds * 1e-9
+        dt = 0.0 if self.last_tick_time is None else min(now_s - self.last_tick_time, 1.0)
+        self.last_tick_time = now_s
         drift = self.get_parameter('sun_drift_deg_per_s').value
-        if drift:
-            a = math.radians(drift * self.period)  # rotate about world Z
-            c, s = math.cos(a), math.sin(a)
-            self.sun_dir = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]]) @ self.sun_dir
+        if drift and dt > 0.0:
+            self.sun_dir = self._rotation(self._drift_axis(), math.radians(drift * dt)) @ self.sun_dir
+            self.sun_dir /= np.linalg.norm(self.sun_dir)
 
         stamp = self.get_clock().now().to_msg()
         image = self.backgrounds[self.frame_idx % len(self.backgrounds)].copy()
         self.frame_idx += 1
-        self._draw_sun(image, r_cam_world @ self.sun_dir)
+        d_cam = r_cam_world @ self.sun_dir
+        jitter = self.get_parameter('sun_jitter_px').value
+        offset = self.rng.normal(0.0, jitter, 2) if jitter > 0 else np.zeros(2)
+        hidden = self.get_parameter('sun_hidden').value or now_s < self.hidden_until
+        if not hidden:
+            self._draw_sun(image, d_cam, offset)
+        truth = Vector3Stamped()
+        truth.header.stamp = stamp
+        truth.header.frame_id = self.camera_frame
+        if d_cam[2] > 1e-6:
+            truth.vector.x, truth.vector.y = float(d_cam[0] / d_cam[2]), float(d_cam[1] / d_cam[2])
+            truth.vector.z = math.acos(float(np.clip(d_cam[2], -1.0, 1.0)))
+        else:
+            truth.vector.x = truth.vector.y = truth.vector.z = float('nan')
+        self.truth_pub.publish(truth)
 
         msg = Image()
         msg.header.stamp = stamp
@@ -240,15 +296,31 @@ class SimSunCamera(Node):
         msg.step = self.width * 3
         msg.data = image.tobytes()
         self.camera_info.header.stamp = stamp
-        self.image_pub.publish(msg)
-        self.info_pub.publish(self.camera_info)
+        if now_s >= self.dropped_until:
+            self.image_pub.publish(msg)
+            self.info_pub.publish(self.camera_info)
         self._publish_sun_tf(stamp)
 
-    def _draw_sun(self, image, d_cam):
+    def _drift_axis(self):
+        axis = list(self.get_parameter('sun_drift_axis').value)
+        if len(axis) == 3 and np.linalg.norm(axis) > 0:
+            return np.array(axis, float) / np.linalg.norm(axis)
+        # Polar axis: tilted up from true north by the latitude. North is north_heading_deg CCW from world +X.
+        lat = math.radians(self.get_parameter('latitude_deg').value)
+        hd = math.radians(self.get_parameter('north_heading_deg').value)
+        return np.array([math.cos(lat) * math.cos(hd), math.cos(lat) * math.sin(hd), math.sin(lat)])
+
+    @staticmethod
+    def _rotation(axis, angle):
+        # Rodrigues. The sun moves westward: clockwise seen from above the north pole = negative about the axis.
+        k = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+        return np.eye(3) - math.sin(angle) * k + (1 - math.cos(angle)) * (k @ k)
+
+    def _draw_sun(self, image, d_cam, offset_px=(0.0, 0.0)):
         if d_cam[2] <= 1e-6:
             return  # sun is behind the camera
-        u = self.k[0, 0] * d_cam[0] / d_cam[2] + self.k[0, 2]
-        v = self.k[1, 1] * d_cam[1] / d_cam[2] + self.k[1, 2]
+        u = self.k[0, 0] * d_cam[0] / d_cam[2] + self.k[0, 2] + offset_px[0]
+        v = self.k[1, 1] * d_cam[1] / d_cam[2] + self.k[1, 2] + offset_px[1]
         radius = self.k[0, 0] * math.tan(math.radians(self.angular_diameter_deg) / 2.0)
         halo = max(1.0, self.halo_scale * radius)
         reach = radius + 3.0 * halo

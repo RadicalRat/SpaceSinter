@@ -11,7 +11,7 @@
 #   --rebuild      rebuild the recorder image first
 #
 # Each run writes <SINTER_BAG_DIR>/<YYYY-MM-DD_HHMMSS>_<label>/ (an MCAP bag, zstd-compressed) plus a
-# <same name>.trial.yaml metadata sheet to fill in (cloud cover, wind, simulant, ...). The MoveIt Pro stack must
+# <same name>.trial.yaml with auto-captured metadata (time, git commit, objective tunables). The MoveIt Pro stack must
 # be running; the recorder joins its ROS graph from its own container, so nothing in the stack is touched.
 set -euo pipefail
 
@@ -31,6 +31,8 @@ TOPICS=(
   /joint_trajectory_admittance_controller/controller_state /trajectory_execution_event
   /behavior_tree_status /failure_reason_collector /rosout
   /sinter/sun_error /sinter/raster_path /sinter/bed_plane /sinter/bed_tilt_deg
+  /sinter/sun_error_stream /sinter/track_error /sinter/track_progress /velocity_force_controller/command
+  /sinter/dexterity /sinter/track_loop_ms /sinter/track_lift
   /sinter/sun_ephemeris /sinter/sun_azimuth_deg /sinter/sun_elevation_deg /sinter/bed_incidence_deg
   /srrl/dni_w_m2 /srrl/ghi_w_m2 /srrl/dhi_w_m2 /srrl/irradiance
   /camera/camera_info /camera/image_raw/compressed
@@ -87,7 +89,9 @@ if $rebuild || [ -z "$(docker images -q "$IMAGE")" ]; then
 fi
 
 name="$(date +%Y-%m-%d_%H%M%S)"
-[ -n "$label" ] && name="${name}_${label// /_}"
+# Only [A-Za-z0-9._-] in the label: it becomes part of a path, a shell command in the recorder and the YAML.
+label=$(printf '%s' "$label" | tr -c 'A-Za-z0-9._-' '_')
+[ -n "$label" ] && name="${name}_${label}"
 mkdir -p "$BAG_ROOT"
 
 # Use the stack's own DDS config so the recorder discovers its nodes (loopback only, no multicast).
@@ -97,25 +101,18 @@ docker exec "$STACK_CONTAINER" bash -c 'cat "$CYCLONEDDS_URI" 2>/dev/null || cat
 topics=("${TOPICS[@]}")
 $depth && topics+=(/camera/camera/depth/color/points)
 
-# Metadata sheet (v2 section 5). Fill in the blanks after the trial.
-objective="$REPO_DIR/src/sinter_robot_hw/objectives/sinter_raster_closed_loop.xml"
-tunables=$(grep -o 'code="line_spacing_m[^"]*"' "$objective" 2>/dev/null | sed 's/^code="//; s/"$//' || true)
+# Auto-captured trial metadata (no hand-filled fields).
+tunables_of() { grep -o 'code="line_spacing_m[^"]*"' "$REPO_DIR/src/sinter_robot_hw/objectives/$1" 2>/dev/null | sed 's/^code="//; s/"$//' || true; }
+tunables=$(tunables_of sinter_raster_closed_loop.xml)
+tunables_continuous=$(tunables_of sinter_raster_continuous.xml)
 cat >"$BAG_ROOT/$name.trial.yaml" <<EOF
 bag: $name
 label: "$label"
 start_local: "$(date --iso-8601=seconds)"
 start_utc: "$(date -u --iso-8601=seconds)"
-git_commit: "$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null)$(git -C "$REPO_DIR" diff --quiet 2>/dev/null || echo '-dirty')"
+git_commit: "$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null)$([ -z "$(git -C "$REPO_DIR" status --porcelain 2>/dev/null)" ] || echo '-dirty')"
 objective_tunables: "$tunables"
-condition_id: ""
-result: ""          # success / failed (keep failed runs, labeled)
-cloud_cover: ""
-wind: ""
-simulant: ""
-bed_geometry: ""
-base_level_pitch_roll_deg: ""
-base_heading_deg: ""
-notes: ""
+continuous_objective_tunables: "$tunables_continuous"
 EOF
 
 run_flags=(--rm --init --name "$RECORDER" --label "sinter.bag=$BAG_ROOT/$name" --network host
@@ -139,5 +136,5 @@ docker run "${run_flags[@]}" "$IMAGE" -c \
 if $detach; then
   echo "Recording in the background. Stop it with: $0 stop"
 else
-  echo "Saved $BAG_ROOT/$name (fill in $name.trial.yaml)"
+  echo "Saved $BAG_ROOT/$name"
 fi

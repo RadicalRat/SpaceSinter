@@ -6,3 +6,6 @@ ament_target_dependencies(test_behavior_plugins ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 ament_add_gtest(test_sinter_geometry test_sinter_geometry.cpp)
 target_link_libraries(test_sinter_geometry sun_pose_finder)
+
+ament_add_gtest(test_tracking test_tracking.cpp)
+target_link_libraries(test_tracking sun_pose_finder)

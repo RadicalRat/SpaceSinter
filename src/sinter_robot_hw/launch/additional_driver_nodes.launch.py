@@ -18,7 +18,8 @@ def generate_launch_description():
     srrl_irradiance_node = Node(package="srrl_irradiance", executable="srrl_irradiance_node", output="screen")
 
     # Ephemeris sun direction at 1 Hz, plus the solar incidence angle on the last fitted bed plane.
-    # Keep north_heading_deg equal to the north_heading_deg tunable in sinter_raster_closed_loop.xml.
+    # Site constants: keep north_heading_deg (and lat/lon) equal to the Parameters scripts in sinter_raster_closed_loop.xml,
+    # calibrate_focus_lift.xml and sinter_dot_grid.xml, the sun_ephemeris_node default, and solve.py --heading.
     sun_ephemeris_node = Node(
         package="sun_pose_finder",
         executable="sun_ephemeris_node",

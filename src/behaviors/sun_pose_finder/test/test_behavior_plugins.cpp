@@ -30,6 +30,12 @@ TEST(BehaviorTests, test_load_behavior_plugins)
     (void)factory.instantiateTreeNode("test_behavior_name", "ComputeSunEphemeris", BT::NodeConfiguration()));
   EXPECT_NO_THROW(
     (void)factory.instantiateTreeNode("test_behavior_name", "FitPlaneRasterPath", BT::NodeConfiguration()));
+  EXPECT_NO_THROW(
+    (void)factory.instantiateTreeNode("test_behavior_name", "TrackRasterWithSun", BT::NodeConfiguration()));
+  EXPECT_NO_THROW(
+    (void)factory.instantiateTreeNode("test_behavior_name", "ComputeDexterity", BT::NodeConfiguration()));
+  EXPECT_NO_THROW(
+    (void)factory.instantiateTreeNode("test_behavior_name", "KeepBestRoll", BT::NodeConfiguration()));
 }
 
 int main(int argc, char** argv)

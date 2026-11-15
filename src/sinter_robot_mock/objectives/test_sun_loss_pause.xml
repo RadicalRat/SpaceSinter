@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Test Sun Loss Pause">
+  <BehaviorTree ID="Test Sun Loss Pause" _description="Simulation fault test: runs the mock tracking path and hides the simulated sun twice for 5 s (like passing clouds) while it scans. Passes if TrackRasterWithSun pauses (holds position, path stops) each time, re-acquires the sun and finishes the path, instead of failing. Watch /sinter/track_progress flatten during each cloud." _favorite="true">
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="Script" code="scan_speed_mps := 0.002; gain_rot := 1.0; gain_pos := 1.0" />
+      <SubTree ID="Move to Waypoint" _collapsed="true" waypoint_name="BeforeSinter" acceleration_scale_factor="1.0" controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory" controller_names="joint_trajectory_admittance_controller" execution_pipeline="jtac" joint_group_name="manipulator" keep_orientation="false" keep_orientation_tolerance="0.05" link_padding="0.0" seed="0" velocity_scale_factor="0.5" />
+      <SubTree ID="Reset Sun To Camera" _collapsed="true" />
+      <Action ID="WaitForDuration" delay_duration="1.0" />
+      <Control ID="Sequence" name="Test path in the focal frame">
+        <Action ID="ResetPoseStampedVector" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0.004;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0.004;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0.008;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0.008;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="AddPoseStampedToVector" input="{pt}" vector="{track_path}" />
+        <Action ID="VisualizePath" path="{track_path}" show_poses="false" />
+      </Control>
+      <Action ID="SwitchController" activate_asap="true" automatic_deactivation="true" controller_list_action_name="/controller_manager/list_controllers" controller_switch_action_name="/controller_manager/switch_controller" strictness="2" timeout="1000.0" activate_controllers="velocity_force_controller" />
+      <Control ID="Parallel" success_count="2" failure_count="1" name="Track while clouds pass">
+        <Control ID="Fallback" name="Track, or switch back and fail">
+        <Action ID="TrackRasterWithSun" path="{track_path}" start_at_m="0.0" progress_m="{track_progress_m}" path_world="{track_path_world}" scan_speed_mps="{scan_speed_mps}" gain_rot="{gain_rot}" gain_pos="{gain_pos}" max_tracking_error_m="0.003" image_topic="/camera/image_raw" camera_info_topic="/camera/camera_info" command_topic="/velocity_force_controller/command" world_frame="world" focal_frame="ee_focal_point_link" rate_hz="50.0" max_linear_mps="0.01" max_angular_rps="0.02" max_pointing_error_rad="0.0175" sun_timeout_s="0.5" sun_lost_abort_s="0.0" start_tolerance_m="0.005" finish_tolerance_m="0.0005" aim_offset_x_rad="0.0" aim_offset_y_rad="0.0" acquire_tolerance_rad="0.002" acquire_timeout_s="0.0" />
+        <Control ID="Sequence" name="Recover">
+          <SubTree ID="Switch To Trajectory Controller" _collapsed="true" />
+          <Action ID="AlwaysFailure" />
+        </Control>
+        </Control>
+        <Control ID="Sequence" name="Clouds">
+          <Action ID="WaitForDuration" delay_duration="15.0" />
+          <Action ID="LogMessage" message="Fault test: cloud 1 (sun hidden 5 s)." log_level="warn" />
+          <Action ID="CallTriggerService" service_name="/sim_sun_camera/hide_sun" response_timeout="3.0" wait_for_server_available_timeout="3.0" />
+          <Action ID="WaitForDuration" delay_duration="15.0" />
+          <Action ID="LogMessage" message="Fault test: cloud 2 (sun hidden 5 s)." log_level="warn" />
+          <Action ID="CallTriggerService" service_name="/sim_sun_camera/hide_sun" response_timeout="3.0" wait_for_server_available_timeout="3.0" />
+        </Control>
+      </Control>
+      <SubTree ID="Switch To Trajectory Controller" _collapsed="true" />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Test Sun Loss Pause">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Continuous Tracking" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

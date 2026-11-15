@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from sun_checks import line_spans, post_correction_indices  # noqa: E402
 
 S, OUT = sys.argv[1], sys.argv[2]
 GOPRO, FK, SUNCAM = "#2a78d6", "#eb6834", "#1baf7a"
@@ -30,6 +31,8 @@ Sv = np.array([e[3:6] for e in eph])
 se = d["/sinter/sun_error"]
 tse = np.array([r[0] for r in se])
 ese = np.degrees([r[5] for r in se])
+POST = post_correction_indices(se)
+SPANS = line_spans(se)
 mdt = lambda x: dt.datetime.fromtimestamp(x, dt.timezone(dt.timedelta(hours=-6)))  # noqa: E731
 
 # Continuous pointing error: lens axis minus sun direction (small-angle vector, world). The constant part
@@ -45,7 +48,7 @@ def pointing_error(W):
     sun camera stays on the sun, so a single constant bias would mostly show that artifact.)"""
     e = W[:, :3, 2] - sun
     out = np.full(len(t), np.nan)
-    post = [tc for tc in tse[1::2] if t[0] < tc < t[-1]]
+    post = [tc for tc in tse[POST] if t[0] < tc < t[-1]]
     for a, b in zip(post, post[1:] + [t[-1]]):
         m = (t >= a) & (t < b)
         if m.any():
@@ -57,8 +60,18 @@ def pointing_error(W):
 err_cam = pointing_error(Wm)
 err_fk = pointing_error(Wf)
 k = 15  # 1.5 s smoothing of the 10 Hz GoPro poses
-smooth = lambda x: np.convolve(np.nan_to_num(x), np.ones(k) / k, "same")  # noqa: E731
-run = (t > tse[1]) & (t < tse[-1] + 20)
+def smooth(x):
+    """NaN-aware moving average: gaps (no segment yet, or between segments) don't pull the mean toward 0."""
+    ok = np.isfinite(x)
+    num = np.convolve(np.where(ok, x, 0.0), np.ones(k), "same")
+    den = np.convolve(ok.astype(float), np.ones(k), "same")
+    return np.where(ok, num / np.maximum(den, 1), np.nan)
+
+
+
+run = (t > tse[POST[0]]) & (t < tse[-1] + 20)
+
+err_cam_s, err_fk_s = smooth(err_cam), smooth(err_fk)
 
 # --- Fig 1: pointing error vs time --------------------------------------------------------------
 fig, axes = plt.subplots(2, 1, figsize=(10, 6.2), gridspec_kw={"height_ratios": [1, 1]})
@@ -66,9 +79,9 @@ for ax, (a, b) in zip(axes, [(t[run][0], t[run][-1]), (mdt(tse[20]).timestamp() 
     m = run & (t >= a) & (t <= b)
     x = [mdt(v) for v in t[m]]
     ax.axhspan(0, R2, color=GOPRO, alpha=0.08, lw=0)
-    ax.plot(x, smooth(err_cam)[m] if ax is axes[1] else smooth(err_cam)[m], color=GOPRO, lw=1.5 if ax is axes[0] else 2,
+    ax.plot(x, err_cam_s[m], color=GOPRO, lw=1.5 if ax is axes[0] else 2,
             label="Real lens axis (GoPro tags)")
-    ax.plot(x, smooth(err_fk)[m], color=FK, lw=1.5 if ax is axes[0] else 2, label="What FK believes")
+    ax.plot(x, err_fk_s[m], color=FK, lw=1.5 if ax is axes[0] else 2, label="What FK believes")
     ms = (tse >= a) & (tse <= b)
     ax.plot([mdt(v) for v in tse[ms]], ese[ms], "o", color=SUNCAM, ms=6, mec=SURF, mew=1.5,
             label="Sun camera (before/after each correction)")
@@ -89,7 +102,7 @@ fig.savefig(f"{OUT}/fig_pointing_error.png", dpi=160)
 
 # --- Fig 2: predicted vs measured sun error at line ends ---------------------------------------
 rows = []
-for j in range(3, len(se) - 1, 2):
+for j, _ in SPANS:
     m = np.where((t > tse[j] + 1) & (t < tse[j + 1] - 1))[0]
     if len(m) < 20:
         continue
@@ -123,7 +136,7 @@ pos = 1000 * ((Wf[:, :3, 3] - Wf[:, :3, 3].mean(0)) @ u)
 dz = Wm[:, :3, 2] - Wf[:, :3, 2]
 on_line = np.zeros(len(t), bool)
 direction = np.zeros(len(t))
-for j in range(3, len(se) - 1, 2):
+for j, _ in SPANS:
     m = (t > tse[j] + 1) & (t < tse[j + 1] - 1)
     on_line |= m
     idx = np.where(m)[0]
@@ -134,10 +147,11 @@ dzc = dz[on_line] - dz[on_line].mean(0)
 axis_dir = np.linalg.svd(dzc, full_matrices=False)[2][0]
 tilt = np.degrees(dz @ axis_dir)
 # Each line referenced to its own mean, removing the slow GoPro-vs-FK drift.
-for j in range(3, len(se) - 1, 2):
+for j, _ in SPANS:
     m = (t > tse[j] + 1) & (t < tse[j + 1] - 1)
     if m.any():
-        # Remove the line's intercept, keep its slope: subtract the tilt at the line's mean position.
+        # Remove the line's intercept, keep its slope: subtract the fit's tilt at pos = 0 (the global mean position,
+        # a common reference for every line), not at the line's own mean.
         a_, b_ = np.polyfit(pos[m], tilt[m], 1)
         tilt[m] -= b_
 fig, ax = plt.subplots(figsize=(7, 4.6))
@@ -159,7 +173,7 @@ fig.savefig(f"{OUT}/fig_tilt_vs_position.png", dpi=160)
 fig, ax = plt.subplots(figsize=(7, 3.8))
 sun_drift = []
 tilt_only = []
-for j in range(3, len(se) - 1, 2):
+for j, _ in SPANS:
     m = np.where((t > tse[j] + 1) & (t < tse[j + 1] - 1))[0]
     if len(m) < 20:
         continue

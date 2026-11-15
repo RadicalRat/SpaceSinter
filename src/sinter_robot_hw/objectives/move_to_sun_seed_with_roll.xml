@@ -60,7 +60,7 @@
       <input_port name="roll_xyzw" default="0;0;0;1" type="std::vector&lt;double&gt;" />
       <input_port name="latitude_deg" default="39.7555" type="double" />
       <input_port name="longitude_deg" default="-105.2211" type="double" />
-      <input_port name="north_heading_deg" default="145" type="double" />
+      <input_port name="north_heading_deg" default="125" type="double" />
       <input_port name="velocity_scale_factor" default="0.25" type="double" />
       <MetadataFields>
         <Metadata subcategory="Sinter" />

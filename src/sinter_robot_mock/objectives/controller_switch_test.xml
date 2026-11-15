@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Controller Switch Test">
+  <BehaviorTree
+    ID="Controller Switch Test"
+    _description="Step 0 of docs/continuous_tracking_plan.md: checks that switching to velocity_force_controller and back works without crashing the objective server (Teleoperate crashed during a controller switch on 2026-10-28). Switches to the velocity controller, holds 3 s (nothing is commanded, so the arm stays still), switches back to the trajectory controller, then makes a planned move to prove trajectories still execute. Safe on hardware: no motion while the velocity controller is active."
+    _favorite="true"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="LogMessage" message="Controller Switch Test: activating velocity_force_controller." log_level="info" />
+      <Action
+        ID="SwitchController"
+        activate_asap="true"
+        automatic_deactivation="true"
+        controller_list_action_name="/controller_manager/list_controllers"
+        controller_switch_action_name="/controller_manager/switch_controller"
+        strictness="2"
+        timeout="1000.0"
+        activate_controllers="velocity_force_controller"
+      />
+      <Action ID="WaitForDuration" delay_duration="3.0" />
+      <Action ID="LogMessage" message="Controller Switch Test: switching back to joint_trajectory_admittance_controller." log_level="info" />
+      <Action
+        ID="SwitchController"
+        activate_asap="true"
+        automatic_deactivation="true"
+        controller_list_action_name="/controller_manager/list_controllers"
+        controller_switch_action_name="/controller_manager/switch_controller"
+        strictness="2"
+        timeout="1000.0"
+        activate_controllers="joint_trajectory_admittance_controller"
+      />
+      <SubTree
+        ID="Move to Waypoint"
+        _collapsed="true"
+        waypoint_name="BeforeSinter"
+        acceleration_scale_factor="1.0"
+        controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory"
+        controller_names="joint_trajectory_admittance_controller"
+        execution_pipeline="jtac"
+        joint_group_name="manipulator"
+        keep_orientation="false"
+        keep_orientation_tolerance="0.05"
+        link_padding="0.0"
+        seed="0"
+        velocity_scale_factor="0.5"
+      />
+      <Action ID="LogMessage" message="Controller Switch Test: passed (both switches worked and a planned move executed)." log_level="info" />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Controller Switch Test">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Continuous Tracking" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

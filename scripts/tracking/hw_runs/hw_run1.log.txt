@@ -1,0 +1,6 @@
++3.9s [20] TrackRasterWithSun Info: Tracking 98.0 mm of path at 0.50 mm/s (6 points).
++11.0s [20] TrackRasterWithSun Info: Sun acquired after 7.2 s; starting the scan.
++215.1s [30] TrackRasterWithSun Warning: Path complete. Lifting the focus 30 mm off the bed before stopping.
++225.1s [20] TrackRasterWithSun Info: Timing: control step mean 0.183 / p99 0.339 / max 2.222 ms (n=11060) | dexterity part mean 0.102 / p99 0.192 / max 1.869 ms (n=10559) | sun detection per frame mean 1.249 / p99 2.153 / max 2.964 ms (n=906) | tick period mean 20.001 / p99 20.095 / max 21.923 ms (n=11059) (target 20.0 ms)
++225.1s [20] TrackRasterWithSun Info: Path complete.
++225.2s [20] LogMessage Info: Track Raster With Sun Mock: path complete, trajectory controller restored.

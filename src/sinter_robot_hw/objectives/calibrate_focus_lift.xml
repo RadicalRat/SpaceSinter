@@ -2,11 +2,11 @@
 <root BTCPP_format="4" main_tree_to_execute="Calibrate Focus Lift">
   <BehaviorTree
     ID="Calibrate Focus Lift"
-    _description="Finds focus_lift_m for Sinter Raster Closed Loop. Does the same scan, crop and plane fit as the main objective, then puts the focal point on the first raster point with the lens on the sun and steps it along the plane normal: focus_lift_m from -0.040 down to -0.070 m in 0.005 m steps (starting highest, so the lens approaches the sand; negative puts the focus below the fitted plane). It holds hold_time_s at each step and logs it; watch the spot and note the step where it is smallest and melts fastest, then set focus_lift_m in Sinter Raster Closed Loop to that value. The sun alignment is re-checked between steps. Keep the crop box and Parameters here the same as in the main objective."
+    _description="Finds focus_lift_m for Sinter Raster Closed Loop. Does the same scan and plane fit as the main objective (with its own crop box), then puts the focal point on the first raster point with the lens on the sun and steps it along the plane normal: focus_lift_m from -0.040 down to -0.070 m in 0.005 m steps (starting highest, so the lens approaches the sand; negative puts the focus below the fitted plane). It holds hold_time_s at each step and logs it; watch the spot and note the step where it is smallest and melts fastest, then set focus_lift_m in Sinter Raster Closed Loop to that value. The sun alignment is re-checked between steps. Its crop box and Parameters are deliberately separate from the main objective's, so place the crop on the same bed surface before running it."
     _favorite="false"
   >
     <Control ID="Sequence" name="TopLevelSequence">
-      <!--Same as Sinter Raster Closed Loop's Parameters (focus_lift_m is unused: the steps set it), plus hold_time_s and step_velocity_scale for the sweep.-->
+      <!--Based on Sinter Raster Closed Loop's Parameters, but deliberately not kept identical (line spacing and alignment tolerance differ; focus_lift_m is unused: the steps set it), plus hold_time_s and step_velocity_scale for the sweep.-->
       <Action
         ID="Script"
         name="Parameters"
@@ -28,7 +28,7 @@
         velocity_scale_factor="1.0"
       />
       <SubTree ID="Clear Snapshot" _collapsed="true" />
-      <!--Same crop as the main objective; then one plane fit per lift step (the fit is deterministic, so only the lift differs) and keep each fit's first raster point.-->
+      <!--Its own crop box (deliberately larger and placed separately from the main objective's, so it does not track it); then one plane fit per lift step (the fit is deterministic, so only the lift differs) and keep each fit's first raster point.-->
       <Control ID="Sequence" name="First raster point at each lift">
         <Action
           ID="GetPointCloud"

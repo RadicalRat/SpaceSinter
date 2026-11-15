@@ -17,6 +17,9 @@
 
   <build_depend>moveit_pro_package</build_depend>
   <depend>moveit_pro_behavior_interface</depend>
+  <depend>moveit_pro_controllers_msgs</depend>
+  <depend>moveit_studio_agent_msgs</depend>
+  <depend>moveit_pro_base</depend>
 
   <depend>libopencv-dev</depend>
   <depend>sensor_msgs</depend>

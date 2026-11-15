@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <sun_pose_finder/fit_plane_raster_path.hpp>
 #include <sun_pose_finder/solar_position.hpp>
 
@@ -158,7 +160,7 @@ TEST(FitPlaneRaster, StaysOnRotatedSquare)
 
 TEST(FitPlaneRaster, ExtremesBoundTheRaster)
 {
-  // Rectangle: the extremes are just its 4 corners (the ends of the first and last lines).
+  // Rectangle, 3 lines of 4 moves: each line's two ends and its middle waypoint.
   std::vector<Eigen::Vector3d> rect;
   for (double x = -0.04; x <= 0.04 + 1e-9; x += 0.002)
   {
@@ -169,10 +171,10 @@ TEST(FitPlaneRaster, ExtremesBoundTheRaster)
   }
   const auto flat = fitPlaneRaster(rect, 0.01, 0.0, 0.0, 0.0, 4);
   ASSERT_TRUE(flat.has_value()) << flat.error();
-  EXPECT_EQ(flat->extremes, (std::vector<size_t>{ 0, 4, 10, 14 }));
+  EXPECT_EQ(flat->extremes, (std::vector<size_t>{ 0, 2, 4, 5, 7, 9, 10, 12, 14 }));
 
-  // Rotated square: the middle lines stick out past the first and last lines, so the extremes add the line ends that
-  // reach farthest along the scan direction. Every waypoint then lies within the extremes' (u, v) bounds.
+  // Rotated square: the middle lines stick out past the first and last lines; their ends are checked too, so every
+  // waypoint lies within the check points' (u, v) bounds.
   const Eigen::AngleAxisd yaw(M_PI / 6.0, Eigen::Vector3d::UnitZ());
   std::vector<Eigen::Vector3d> points;
   for (double x = -0.10; x <= 0.10 + 1e-9; x += 0.002)
@@ -184,8 +186,11 @@ TEST(FitPlaneRaster, ExtremesBoundTheRaster)
   }
   const auto raster = fitPlaneRaster(points, 0.01, 0.0, 0.0, 0.0, 10);
   ASSERT_TRUE(raster.has_value()) << raster.error();
-  ASSERT_GE(raster->extremes.size(), 4u);
-  ASSERT_LE(raster->extremes.size(), 6u);
+  // 3 check points per line (10 moves per line, so every line has a middle waypoint).
+  const size_t num_lines = raster->poses.size() / 11;
+  ASSERT_EQ(raster->poses.size() % 11, 0u);
+  EXPECT_EQ(raster->extremes.size(), 3 * num_lines);
+  EXPECT_TRUE(std::is_sorted(raster->extremes.begin(), raster->extremes.end()));
   const Eigen::Matrix3d axes = raster->plane.linear();
   auto uv = [&](size_t i) -> Eigen::Vector2d {
     return (axes.transpose() * (raster->poses[i].translation() - raster->plane.translation())).head<2>();
@@ -205,6 +210,58 @@ TEST(FitPlaneRaster, ExtremesBoundTheRaster)
     EXPECT_GE(uv(i).y(), lo.y() - 1e-9);
     EXPECT_LE(uv(i).y(), hi.y() + 1e-9);
   }
+}
+
+TEST(FitPlaneRaster, CenteredSquareOnTheFittedPlane)
+{
+  // A tilted 0.20 x 0.10 m patch: the 0.04 m square must sit on the fitted centroid,
+  // with lines along the plane's projection of +X, line ends exactly at +-0.02 m (no edge margin).
+  const Eigen::AngleAxisd tilt(0.5, Eigen::Vector3d::UnitY());
+  std::vector<Eigen::Vector3d> pts;
+  for (double x = -0.10; x <= 0.10 + 1e-9; x += 0.004)
+  {
+    for (double y = -0.05; y <= 0.05 + 1e-9; y += 0.004)
+    {
+      pts.push_back(tilt * Eigen::Vector3d(x, y, 0.0) + Eigen::Vector3d(0.3, -0.2, 0.1));
+    }
+  }
+  const auto r = fitPlaneRaster(pts, 0.01, 0.0, 0.0, 0.0, 1, 0.04);
+  ASSERT_TRUE(r.has_value()) << r.error();
+  const Eigen::Matrix3d axes = r->plane.linear();
+  // u is +X projected on the plane
+  const Eigen::Vector3d n = axes.col(2);
+  const Eigen::Vector3d ux = (Eigen::Vector3d::UnitX() - Eigen::Vector3d::UnitX().dot(n) * n).normalized();
+  EXPECT_NEAR(axes.col(0).dot(ux), 1.0, 1e-9);
+  EXPECT_EQ(r->poses.size(), 10u);  // 5 lines x 2 ends
+  double umin = 1e9, umax = -1e9, vmin = 1e9, vmax = -1e9;
+  for (const auto& p : r->poses)
+  {
+    const Eigen::Vector3d d = axes.transpose() * (p.translation() - r->plane.translation());
+    EXPECT_NEAR(d.z(), 0.0, 1e-9);
+    umin = std::min(umin, d.x()); umax = std::max(umax, d.x());
+    vmin = std::min(vmin, d.y()); vmax = std::max(vmax, d.y());
+  }
+  EXPECT_NEAR(umin, -0.02, 1e-9);
+  EXPECT_NEAR(umax, 0.02, 1e-9);
+  EXPECT_NEAR(vmin, -0.02, 1e-9);
+  EXPECT_NEAR(vmax, 0.02, 1e-9);
+  // A square larger than the measured patch is refused (0.10 m wide patch, 0.15 m square).
+  const auto too_big = fitPlaneRaster(pts, 0.01, 0.0, 0.0, 0.0, 1, 0.15);
+  ASSERT_FALSE(too_big.has_value());
+  EXPECT_NE(too_big.error().find("does not fit"), std::string::npos);
+  // Lines are centred when the span is not a whole number of spacings: 0.03 m / 0.004 m = 7.5 -> 8 lines over 28 mm,
+  // offset 1 mm on each side.
+  const auto odd = fitPlaneRaster(pts, 0.004, 0.0, 0.005, 0.0, 1, 0.04);
+  ASSERT_TRUE(odd.has_value()) << odd.error();
+  double lo = 1e9, hi = -1e9;
+  for (const auto& p : odd->poses)
+  {
+    const double vv = (odd->plane.linear().transpose() * (p.translation() - odd->plane.translation())).y();
+    lo = std::min(lo, vv);
+    hi = std::max(hi, vv);
+  }
+  EXPECT_NEAR(lo, -0.014, 1e-9);
+  EXPECT_NEAR(hi, 0.014, 1e-9);
 }
 
 TEST(FitPlaneRaster, RejectsBadInput)

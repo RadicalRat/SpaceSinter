@@ -28,7 +28,9 @@ public:
     : Node("sun_ephemeris")
     , latitude_deg_(declare_parameter("latitude_deg", 39.7555))
     , longitude_deg_(declare_parameter("longitude_deg", -105.2211))
-    , north_heading_deg_(declare_parameter("north_heading_deg", 100.0))
+    // Site constants: keep in sync with additional_driver_nodes.launch.py and the Parameters scripts in
+    // sinter_raster_closed_loop.xml, calibrate_focus_lift.xml and sinter_dot_grid.xml.
+    , north_heading_deg_(declare_parameter("north_heading_deg", 125.0))
     , frame_id_(declare_parameter("frame_id", std::string("world")))
     , tf_buffer_(get_clock())
     , tf_listener_(tf_buffer_)
@@ -41,7 +43,12 @@ public:
           "/sinter/bed_plane", rclcpp::QoS(1).transient_local(),
           [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr msg) { bed_plane_ = *msg; }))
   {
-    const double rate_hz = declare_parameter("rate_hz", 1.0);
+    double rate_hz = declare_parameter("rate_hz", 1.0);
+    if (!(rate_hz > 0.0))
+    {
+      RCLCPP_WARN(get_logger(), "rate_hz must be > 0 (got %.3f); using 1 Hz", rate_hz);
+      rate_hz = 1.0;
+    }
     timer_ = create_wall_timer(std::chrono::duration<double>(1.0 / rate_hz), [this] { publish(); });
     RCLCPP_INFO(get_logger(), "Sun ephemeris at lat %.4f, lon %.4f, north heading %.1f deg in %s", latitude_deg_,
                 longitude_deg_, north_heading_deg_, frame_id_.c_str());

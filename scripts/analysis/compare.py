@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from sun_checks import line_spans  # noqa: E402
 from scipy.spatial.transform import Rotation as Rot  # noqa: E402
 
 S = sys.argv[1]
@@ -32,7 +33,7 @@ se = d["/sinter/sun_error"]
 tse = np.array([r[0] for r in se])
 print("\nline      dur  move(mm)  FK axis rot  camera axis rot  cam-vs-FK  sun_err@end")
 rows = []
-for k in range(3, len(se) - 1, 2):
+for k, _ in line_spans(se):
     a, b = tse[k] + 1, tse[k + 1] - 1
     m = (t > a) & (t < b)
     if m.sum() < 20:

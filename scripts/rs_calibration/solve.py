@@ -21,9 +21,26 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation as R
 
-# Current URDF: ee_end_effector_link -> ee_realsense_link (end_effector_urdf_macro.xacro).
-URDF_XYZ = np.array([0.031, -0.035, 0.14495])
-URDF_RPY = np.array([math.pi, -1.5708, 0.0])
+XACRO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src", "sinter_arm_description",
+                     "sinter_arm_description", "urdf", "end_effector_urdf_macro.xacro")
+
+
+def xacro_mount():
+    """ee_realsense_joint origin (ee_end_effector_link -> ee_realsense_link) as written in the xacro now."""
+    import re
+    txt = open(XACRO).read()
+    j = re.search(r'<joint name="ee_realsense_joint".*?</joint>', txt, re.S)
+    o = re.search(r'<origin\s+xyz="([^"]*)"\s+rpy="([^"]*)"', j.group(0)) if j else None
+    if not o:
+        raise SystemExit(f"ee_realsense_joint origin not found in {XACRO}")
+
+    def num(v):
+        v = v.strip()
+        if v.startswith("${") and v.endswith("}"):
+            v = v[2:-1]
+        return float(eval(v, {"__builtins__": {}}, {"PI": math.pi, "pi": math.pi}))  # xacro math like ${PI/2}
+
+    return np.array([num(v) for v in o.group(1).split()]), np.array([num(v) for v in o.group(2).split()])
 
 
 def ransac_planes(P, max_planes=4, tol=0.008, min_frac=0.06, iters=300, seed=0):
@@ -72,7 +89,9 @@ def load(snap_dir, max_pts=60000):
         if len(P) > max_pts:
             P = P[np.random.default_rng(1).choice(len(P), max_pts, replace=False)]
         planes = ransac_planes(P)
-        snaps.append(dict(name=os.path.basename(f), A=z["T_world_link"], X=z["T_link_cloud"], planes=planes))
+        snaps.append(dict(name=os.path.basename(f), A=z["T_world_link"], X=z["T_link_cloud"], planes=planes,
+                          wall_time=float(z["wall_time"]),
+                          T_mount=z["T_mount"] if "T_mount" in z.files else None))
         print(f"{os.path.basename(f)}: {len(P)} pts, planes " +
               ", ".join(f"{p['count']} (rms {p['rms'] * 1e3:.1f} mm)" for p in planes))
     return snaps
@@ -217,7 +236,11 @@ def main():
               f"from {r['covered']}/{len(snaps)} snapshots")
     print("\nCurrent URDF, same plane matching as the solver:")
     nominal = cluster_report(snaps, np.eye(4))
-    best_name = min((k for k in results if results[k]), key=lambda k: (-results[k]["n_clustered"], results[k]["score"]))
+    solved = [k for k in results if results[k]]
+    if not solved:
+        raise SystemExit("No seed found a plane seen in 3+ snapshots: capture more poses that see the ground and the "
+                         "bed (or check the depth stream).")
+    best_name = min(solved, key=lambda k: (-results[k]["n_clustered"], results[k]["score"]))
     best = results[best_name]
     nom = results.get("current URDF")
     if nom and nom["covered"] == len(snaps) and nominal and max(st["ang_rms"] for st in nominal[:2]) < 1.5:
@@ -231,7 +254,7 @@ def main():
     print(f"  correction in ee_realsense_link: rotation {np.degrees(np.linalg.norm(x[:3])):.2f} deg about "
           f"{(x[:3] / max(np.linalg.norm(x[:3]), 1e-12)).round(3)}, rpy {np.degrees(dR.as_euler('xyz')).round(2)} deg, "
           f"translation {(x[3:6] * 1e3).round(1)} mm (only the parts along plane normals are measured)")
-    stamp = os.path.getmtime(glob.glob(os.path.join(a.snap_dir, 'snap_*.npz'))[0])
+    stamp = float(np.median([sn["wall_time"] for sn in snaps]))  # stored at capture; file mtimes change on copy
     s, el, az = sun_vector(dt.datetime.fromtimestamp(stamp, dt.timezone.utc), a.lat, a.lon, a.heading)
     print(f"  sun at capture time: az {az:.1f} el {el:.1f} -> world {s.round(3)} (heading {a.heading})")
     for st in sorted(best["stats"], key=lambda st: -st["w"]):
@@ -239,9 +262,18 @@ def main():
         print(f"  plane seen {st['size']}x: normal {n.round(3)} (tilt {np.degrees(np.arccos(n[2])):.1f} deg), "
               f"spread {st['ang_rms']:.2f} deg / {st['d_rms'] * 1e3:.1f} mm, centroid {st['c'].round(3)}, "
               f"sun incidence {np.degrees(np.arccos(np.clip(n @ s, -1, 1))):.1f} deg")
-    Tpl = np.eye(4)
-    Tpl[:3, :3] = R.from_euler("xyz", URDF_RPY).as_matrix()
-    Tpl[:3, 3] = URDF_XYZ
+    # The mount the snapshots were captured with (newer captures store it); else the xacro as it is now.
+    if snaps[0]["T_mount"] is not None:
+        Tpl = snaps[0]["T_mount"]
+        URDF_XYZ, URDF_RPY = Tpl[:3, 3], R.from_matrix(Tpl[:3, :3]).as_euler("xyz")
+        src = "captured TF"
+    else:
+        URDF_XYZ, URDF_RPY = xacro_mount()
+        Tpl = np.eye(4)
+        Tpl[:3, :3] = R.from_euler("xyz", URDF_RPY).as_matrix()
+        Tpl[:3, 3] = URDF_XYZ
+        src = "xacro now (this capture predates stored mounts: make sure the xacro hasn't changed since)"
+    print(f"\n  mount source: {src}")
     Tnew = Tpl @ dT_of(x)
     rpy = R.from_matrix(Tnew[:3, :3]).as_euler("xyz")
     print(f"\n  URDF ee_realsense_joint now:  xyz=\"{' '.join(f'{v:.5f}' for v in URDF_XYZ)}\" rpy=\"{' '.join(f'{v:.5f}' for v in URDF_RPY)}\"")

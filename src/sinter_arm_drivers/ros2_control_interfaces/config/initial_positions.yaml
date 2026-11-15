@@ -1,9 +1,11 @@
-# Default initial positions for j2n6s300's ros2_control fake system
+# Default initial positions for j2n6s300's ros2_control fake system (mock arm only).
+# Set to the BeforeSinter waypoint (2026-11-11): the old all-pi pose was in self-collision
+# (ee_end_effector_link <-> j2n6s300_link_3), so no planned move could start from it.
 
 initial_positions:
-  j2n6s300_joint_1: 3.1415
-  j2n6s300_joint_2: 3.1415
-  j2n6s300_joint_3: 3.1415
-  j2n6s300_joint_4: 3.1415
-  j2n6s300_joint_5: 3.1415
-  j2n6s300_joint_6: 1.5
+  j2n6s300_joint_1: -1.2182
+  j2n6s300_joint_2: 3.4858
+  j2n6s300_joint_3: 1.4574
+  j2n6s300_joint_4: 1.1697
+  j2n6s300_joint_5: 1.4284
+  j2n6s300_joint_6: 0.2103

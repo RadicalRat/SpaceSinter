@@ -2,3 +2,10 @@ build/
 install/
 log/
 .vscode/
+__pycache__/
+*.pyc
+
+# Mock/hardware run outputs
+scripts/tracking/*.npz
+scripts/tracking/*.png
+scripts/tracking/.mock_stack.log

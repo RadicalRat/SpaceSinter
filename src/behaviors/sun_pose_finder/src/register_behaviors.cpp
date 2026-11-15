@@ -5,6 +5,8 @@
 #include <sun_pose_finder/compute_sun_ephemeris.hpp>
 #include <sun_pose_finder/fit_plane_raster_path.hpp>
 #include <sun_pose_finder/sun_pose_finder.hpp>
+#include <sun_pose_finder/track_raster_with_sun.hpp>
+#include <sun_pose_finder/roll_selection.hpp>
 
 #include <pluginlib/class_list_macros.hpp>
 
@@ -19,6 +21,9 @@ public:
     moveit_pro::behaviors::registerBehavior<SunPoseFinder>(factory, "SunPoseFinder", shared_resources);
     moveit_pro::behaviors::registerBehavior<ComputeSunEphemeris>(factory, "ComputeSunEphemeris", shared_resources);
     moveit_pro::behaviors::registerBehavior<FitPlaneRasterPath>(factory, "FitPlaneRasterPath", shared_resources);
+    moveit_pro::behaviors::registerBehavior<TrackRasterWithSun>(factory, "TrackRasterWithSun", shared_resources);
+    moveit_pro::behaviors::registerBehavior<ComputeDexterity>(factory, "ComputeDexterity", shared_resources);
+    moveit_pro::behaviors::registerBehavior<KeepBestRoll>(factory, "KeepBestRoll", shared_resources);
     
   }
 };

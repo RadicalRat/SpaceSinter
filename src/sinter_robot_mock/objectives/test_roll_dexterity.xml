@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Test Roll Dexterity">
+  <BehaviorTree ID="Test Roll Dexterity" _description="Simulation check of the singularity-aware roll selection: from BeforeSinter, scores all 8 lens rolls over the mock test path (IK with collisions at each point, then the worst point's dexterity) and logs each score and the winner, without moving." _favorite="true">
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action ID="Script" code="min_roll_dexterity := 0.02" />
+      <SubTree ID="Move to Waypoint" _collapsed="true" waypoint_name="BeforeSinter" acceleration_scale_factor="1.0" controller_action_server="/joint_trajectory_admittance_controller/follow_joint_trajectory" controller_names="joint_trajectory_admittance_controller" execution_pipeline="jtac" joint_group_name="manipulator" keep_orientation="false" keep_orientation_tolerance="0.05" link_padding="0.0" seed="0" velocity_scale_factor="0.5" />
+      <Control ID="Sequence" name="Test path in the focal frame">
+        <Action ID="ResetPoseStampedVector" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0.004;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0.004;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0;0.008;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+        <Action ID="CreatePoseStamped" reference_frame="ee_focal_point_link" position_xyz="0.03;0.008;0" orientation_xyzw="0;0;0;1" pose_stamped="{pt}" />
+        <Action ID="TransformPoseFrame" input_pose="{pt}" target_frame_id="world" output_pose="{pt_world}" />
+        <Action ID="AddPoseStampedToVector" input="{pt_world}" vector="{track_path}" />
+      </Control>
+      <Action ID="GetCurrentPlanningScene" planning_scene_msg="{planning_scene}" />
+      <Control ID="Sequence" name="Pick the lens roll farthest from a singularity over the whole raster">
+        <!--Every roll whose IK solves at all raster check points is scored by its worst point's dexterity (distance from singularity); the best one becomes sun_orientation. A roll that fails IK anywhere is skipped.-->
+        <Action ID="Script" code="best_dexterity := -1.0" />
+        <Decorator ID="ForceSuccess" name="Roll 0 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;0;1"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll 0 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll 45 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;0.382683;0.92388"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll 45 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll -45 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;-0.382683;0.92388"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll -45 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll 90 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;0.707107;0.707107"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll 90 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll -90 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;-0.707107;0.707107"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll -90 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll 135 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;0.92388;0.382683"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll 135 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll -135 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;-0.92388;0.382683"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll -135 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+        <Decorator ID="ForceSuccess" name="Roll 180 deg">
+          <Control ID="Sequence">
+            <SubTree
+              ID="Raster Reachable With Roll"
+              _collapsed="true"
+              raster_path="{track_path}"
+              roll_xyzw="0;0;1;0"
+              planning_scene_msg="{planning_scene}"
+              rolled_orientation="{cand_orientation}"
+              min_dexterity="{cand_dexterity}"
+            />
+            <Action
+              ID="KeepBestRoll"
+              candidate_score="{cand_dexterity}"
+              candidate_orientation="{cand_orientation}"
+              candidate_name="roll 180 deg"
+              best_score_in="{best_dexterity}"
+              best_score_out="{best_dexterity}"
+              best_orientation="{sun_orientation}"
+              best_name="{best_roll_name}"
+            />
+          </Control>
+        </Decorator>
+                <Decorator ID="Precondition" if="best_dexterity &lt; 0.0" else="SUCCESS">
+          <Control ID="Sequence"><Action ID="LogMessage" message="Roll test: no roll reaches the path." log_level="error" /><Action ID="AlwaysFailure" /></Control>
+        </Decorator>
+        <Decorator ID="Precondition" if="best_dexterity &lt; min_roll_dexterity" else="SUCCESS">
+          <Control ID="Sequence"><Action ID="LogMessage" message="Roll test: best roll is below min_roll_dexterity (expected when it is set high)." log_level="error" /><Action ID="AlwaysFailure" /></Control>
+        </Decorator>
+        <Action ID="LogMessage" message="Roll dexterity test done: see the KeepBestRoll lines above (one per reachable roll)." log_level="info" />
+      </Control>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Test Roll Dexterity">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Continuous Tracking" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

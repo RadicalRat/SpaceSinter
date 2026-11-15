@@ -21,8 +21,8 @@ struct PlaneRaster
   double rms_m;                          // RMS distance of the inliers from the fitted plane
   size_t num_inliers;                    // points used for the fit and the raster extent
   size_t num_outliers;                   // points dropped as farther than `outlier_distance` from the plane
-  std::vector<size_t> extremes;          // indices into `poses`: the ends of the first and last lines, plus the
-                                         // line ends farthest out along the scan direction (at most 6, sorted)
+  std::vector<size_t> extremes;          // indices into `poses` to check for reachability: both ends and the
+                                         // middle waypoint of every line (ascending)
 };
 
 /**
@@ -31,12 +31,15 @@ struct PlaneRaster
  * from it (e.g. sun glare noise in the depth image) are dropped from both the fit and the raster extent. Scan lines run along the plane's longest extent and are `line_spacing` apart; each line
  * spans only the points within half a line spacing of it, so the raster stays on the surface. Along each line, waypoints
  * are at most `point_spacing` apart (0 means line end points only), and each line is split into at least
- * `line_subdivisions` equal moves. `edge_margin` shrinks the area on every side. The
+ * `line_subdivisions` equal moves. `edge_margin` shrinks the area on every side. If `square_size` > 0 the raster is
+ * instead a square of that side centred on the fitted plane's centroid, with lines along the plane's projection of the
+ * points' frame +X and lines centred in it; the inliers must cover the square (within 5 mm) or the fit fails. The
  * normal is flipped to point toward +Z of the points' frame.
  */
 tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::Vector3d>& points,
                                                       double line_spacing, double point_spacing, double edge_margin,
-                                                      double outlier_distance, int line_subdivisions = 1);
+                                                      double outlier_distance, int line_subdivisions = 1,
+                                                      double square_size = 0.0);
 
 /**
  * @brief Behavior wrapper around fitPlaneRaster for a PointCloud2 (use a cropped cloud).

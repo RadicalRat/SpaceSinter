@@ -78,8 +78,11 @@ class Capture(Node):
             return
         names = sorted(self.q)
         qv = np.array([self.q[k] for k in names])
-        if self.last_q is not None and np.max(np.abs(qv - self.last_q)) < NEW_POSE_RAD:
-            return
+        # Compare by joint name: another /joint_states publisher may send a different subset of joints.
+        if self.last_q is not None:
+            common = [k for k in self.q if k in self.last_q]
+            if common and max(abs(self.q[k] - self.last_q[k]) for k in common) < NEW_POSE_RAD:
+                return
         fresh = [m for t, m in self.clouds if t > self.still_since + 0.3]
         if len(fresh) < FRAMES:
             return
@@ -87,6 +90,8 @@ class Capture(Node):
         try:
             Twl = mat(self.buf.lookup_transform("world", "ee_realsense_link", rclpy.time.Time()))
             Tlc = mat(self.buf.lookup_transform("ee_realsense_link", frame, rclpy.time.Time()))
+            # The URDF mount (ee_realsense_joint origin) in effect for this capture, so solve.py corrects that one.
+            Tml = mat(self.buf.lookup_transform("ee_end_effector_link", "ee_realsense_link", rclpy.time.Time()))
         except Exception as e:  # noqa: BLE001
             self.get_logger().warn(f"tf not ready: {e}")
             return
@@ -94,11 +99,11 @@ class Capture(Node):
                             for m in fresh]).astype(np.float32)
         path = os.path.join(self.out, f"snap_{self.n:02d}.npz")
         np.savez_compressed(path, P=P, T_world_link=Twl, T_link_cloud=Tlc, frame=frame,
-                            joint_names=np.array(names), q=qv, wall_time=time.time())
+                            joint_names=np.array(names), q=qv, wall_time=time.time(), T_mount=Tml)
         self.get_logger().info(f"saved {path}: {len(P)} pts, link at {Twl[:3, 3].round(3)}, "
                                f"view dir {(Twl[:3, :3] @ [1, 0, 0]).round(2)}")
         self.n += 1
-        self.last_q = qv
+        self.last_q = dict(self.q)
 
 
 def main():

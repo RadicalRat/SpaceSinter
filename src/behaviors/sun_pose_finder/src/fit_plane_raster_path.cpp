@@ -77,7 +77,7 @@ std::vector<Eigen::Vector3d> ransacInliers(const std::vector<Eigen::Vector3d>& p
 
 tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::Vector3d>& all_points,
                                                       double line_spacing, double point_spacing, double edge_margin,
-                                                      double outlier_distance, int line_subdivisions)
+                                                      double outlier_distance, int line_subdivisions, double square_size)
 {
   if (all_points.size() < 3)
   {
@@ -138,6 +138,17 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
   {
     normal = -normal;
   }
+  if (square_size > 0.0)
+  {
+    // Fixed square: lines along the plane's projection of the points' frame +X (repeatable; the PCA long axis of a
+    // square crop is arbitrary), falling back to +Y if the plane is nearly perpendicular to X.
+    Eigen::Vector3d axis = Eigen::Vector3d::UnitX() - Eigen::Vector3d::UnitX().dot(normal) * normal;
+    if (axis.norm() < 1e-6)
+    {
+      axis = Eigen::Vector3d::UnitY() - Eigen::Vector3d::UnitY().dot(normal) * normal;
+    }
+    u = axis.normalized();
+  }
   const Eigen::Vector3d v = normal.cross(u).normalized();
   u = v.cross(normal);
 
@@ -157,6 +168,22 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
     v_min = std::min(v_min, d.dot(v));
     v_max = std::max(v_max, d.dot(v));
   }
+  if (square_size > 0.0)
+  {
+    // The square must lie on the measured surface (within 5 mm of the inliers' extent), or part of the raster
+    // would sit on a plane extrapolated past the bed edge.
+    const double half = 0.5 * square_size, slack = 0.005;
+    if (-half < u_min - slack || half > u_max + slack || -half < v_min - slack || half > v_max + slack)
+    {
+      return tl::make_unexpected(fmt::format(
+          "raster_size {:.3f} m does not fit on the fitted surface ({:.3f} x {:.3f} m around its centroid, offsets "
+          "u [{:.3f}, {:.3f}] v [{:.3f}, {:.3f}]): enlarge or re-centre the crop box, or reduce raster_size_m",
+          square_size, u_max - u_min, v_max - v_min, u_min, u_max, v_min, v_max));
+    }
+    // A square of side square_size centred on the fitted plane's centroid, independent of where the points end.
+    u_min = v_min = -0.5 * square_size;
+    u_max = v_max = 0.5 * square_size;
+  }
   u_min += edge_margin;
   u_max -= edge_margin;
   v_min += edge_margin;
@@ -174,8 +201,17 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
   const int num_lines = static_cast<int>(std::floor((v_max - v_min) / line_spacing + 1e-9)) + 1;
   std::vector<double> line_u_min(num_lines, std::numeric_limits<double>::max());
   std::vector<double> line_u_max(num_lines, -std::numeric_limits<double>::max());
+  if (square_size > 0.0)
+  {
+    std::fill(line_u_min.begin(), line_u_min.end(), u_min - edge_margin);
+    std::fill(line_u_max.begin(), line_u_max.end(), u_max + edge_margin);
+  }
   for (const auto& p : points)
   {
+    if (square_size > 0.0)
+    {
+      break;  // fixed square: every line spans the full square
+    }
     const Eigen::Vector3d d = p - centroid;
     const int line = static_cast<int>(std::lround((d.dot(v) - v_min) / line_spacing));
     if (line >= 0 && line < num_lines)
@@ -188,12 +224,6 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
   PlaneRaster result{ plane, {}, std::sqrt(std::max(0.0, solver.eigenvalues()(0))), points.size(),
                       all_points.size() - points.size(), {} };
   int lines_used = 0;
-  // Index of each kept line's lo-u and hi-u end in `poses`, for the extremes.
-  std::vector<std::pair<size_t, size_t>> line_ends;
-  double lowest_lo = std::numeric_limits<double>::max();
-  double highest_hi = -std::numeric_limits<double>::max();
-  size_t lowest_lo_index = 0;
-  size_t highest_hi_index = 0;
   for (int line = 0; line < num_lines; ++line)
   {
     const double lo = std::max(u_min, line_u_min[line] + edge_margin);
@@ -206,21 +236,20 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
     const int segments_per_line =
         std::max(line_subdivisions,
                  point_spacing > 0.0 ? static_cast<int>(std::ceil((hi - lo) / point_spacing - 1e-9)) : 1);
-    const double v_line = v_min + line * line_spacing;
+    // Square mode: centre the lines in the square (the span is rarely a whole number of spacings).
+    const double v_offset = square_size > 0.0 ? 0.5 * ((v_max - v_min) - (num_lines - 1) * line_spacing) : 0.0;
+    const double v_line = v_min + v_offset + line * line_spacing;
     const size_t first = result.poses.size();
     const size_t last = first + segments_per_line;
     const bool forward = lines_used % 2 == 0;  // forward lines start at lo
-    line_ends.emplace_back(forward ? first : last, forward ? last : first);
-    if (lo < lowest_lo)
+    // Reachability check points: both ends of every line plus its middle waypoint (if it has one). Corners alone
+    // missed interior joint-limit/collision failures, and checking every waypoint was too slow.
+    result.extremes.push_back(first);
+    if (segments_per_line >= 2)
     {
-      lowest_lo = lo;
-      lowest_lo_index = line_ends.back().first;
+      result.extremes.push_back(first + segments_per_line / 2);
     }
-    if (hi > highest_hi)
-    {
-      highest_hi = hi;
-      highest_hi_index = line_ends.back().second;
-    }
+    result.extremes.push_back(last);
     for (int k = 0; k <= segments_per_line; ++k)
     {
       const double frac = static_cast<double>(k) / segments_per_line;
@@ -230,13 +259,6 @@ tl::expected<PlaneRaster, std::string> fitPlaneRaster(const std::vector<Eigen::V
       result.poses.push_back(pose);
     }
     ++lines_used;
-  }
-  if (!line_ends.empty())
-  {
-    result.extremes = { line_ends.front().first, line_ends.front().second, line_ends.back().first,
-                        line_ends.back().second,  lowest_lo_index,          highest_hi_index };
-    std::sort(result.extremes.begin(), result.extremes.end());
-    result.extremes.erase(std::unique(result.extremes.begin(), result.extremes.end()), result.extremes.end());
   }
   return result;
 }
@@ -262,6 +284,11 @@ BT::PortsList FitPlaneRasterPath::providedPorts()
     BT::InputPort<double>("line_spacing", 0.01, "M: distance between scan lines, in meters."),
     BT::InputPort<double>("point_spacing", 0.0,
                           "Maximum distance between waypoints along a scan line, in meters. 0 = line ends only."),
+    BT::InputPort<double>("raster_size_m", 0.0,
+                          "If > 0: the raster is a square of this side centred on the fitted plane's centroid "
+                          "(lines along the plane's projection of world +X, centred in the square). The measured "
+                          "surface must cover the square (within 5 mm), so make the crop box a little larger than "
+                          "the square; the fit fails otherwise. 0 = fill the cropped surface."),
     BT::InputPort<int>("line_subdivisions", 1,
                        "Split each scan line into this many equal moves (4 = waypoints at 1/4, 2/4 and 3/4 between the "
                        "ends), so the sun is re-checked more often. 1 = line ends only."),
@@ -284,8 +311,9 @@ BT::PortsList FitPlaneRasterPath::providedPorts()
     BT::OutputPort<int>("num_waypoints", "{num_waypoints}", "N: number of waypoints in the path."),
     BT::OutputPort<std::vector<geometry_msgs::msg::PoseStamped>>(
         "extremes", "{raster_extremes}",
-        "The outermost waypoints of `path` (both ends of the first and last scan lines, plus the line ends farthest "
-        "out along the scan direction; at most 6). Enough for a quick reachability check of the whole raster."),
+        "Waypoints of `path` to check for reachability: both ends and the middle waypoint of every scan line (about "
+        "3 per line, in path order). Much faster than checking every waypoint, and catches interior failures that "
+        "the raster corners alone miss."),
   };
 }
 
@@ -323,8 +351,9 @@ BT::NodeStatus FitPlaneRasterPath::tick()
     }
   }
 
-  const auto raster =
-      fitPlaneRaster(points, line_spacing, point_spacing, edge_margin, outlier_distance, line_subdivisions);
+  const double raster_size = getInput<double>("raster_size_m").value_or(0.0);
+  const auto raster = fitPlaneRaster(points, line_spacing, point_spacing, edge_margin, outlier_distance,
+                                     line_subdivisions, raster_size);
   if (!raster)
   {
     shared_resources_->logger->publishFailureMessage(kLogSource, raster.error());

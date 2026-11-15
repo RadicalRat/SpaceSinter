@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Switch To Trajectory Controller">
+  <BehaviorTree
+    ID="Switch To Trajectory Controller"
+    _description="Recovery after a stopped tracking run: activates joint_trajectory_admittance_controller (deactivating velocity_force_controller if it is active), so planned moves (Move to Waypoint, Move to Pose, ...) work again. Run it after you stop a continuous-tracking objective from the UI: a cancelled objective does not get to switch back itself. Does not move the arm. Safe to run when the trajectory controller is already active."
+    _favorite="true"
+  >
+    <Control ID="Sequence" name="TopLevelSequence">
+      <Action
+        ID="SwitchController"
+        activate_asap="true"
+        automatic_deactivation="true"
+        controller_list_action_name="/controller_manager/list_controllers"
+        controller_switch_action_name="/controller_manager/switch_controller"
+        strictness="2"
+        timeout="1000.0"
+        activate_controllers="joint_trajectory_admittance_controller"
+      />
+      <Action ID="LogMessage" message="Trajectory controller active; planned moves are available." log_level="info" />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Switch To Trajectory Controller">
+      <MetadataFields>
+        <Metadata runnable="true" />
+        <Metadata subcategory="Continuous Tracking" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>
