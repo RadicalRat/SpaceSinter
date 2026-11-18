@@ -5,6 +5,7 @@ Y = focal_T_body (tags rigid on the lens frame). Fitting X, Y and dt absorbs con
 residuals show only configuration- or time-dependent disagreement between the camera and FK.
 """
 import json
+import os
 import pickle
 import sys
 
@@ -14,14 +15,20 @@ from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation as Rot
 
 S = sys.argv[1]
-TAG = 0.030
-FPS = 30000 / 1001
-COARSE_FRAME0 = 1793390134 + 20 / FPS  # GoPro timecode 13:55:34;20 MDT
+# Defaults reproduce Trial2_10_30; other trials set these through the environment (see README).
+TAG = float(os.environ.get("TAG", 0.030))
+FPS = eval(os.environ.get("FPS", "30000 / 1001"))
+COARSE_FRAME0 = float(os.environ.get("FRAME0", 1793390134 + 20 / (30000 / 1001)))  # ROS time of video frame 0
+NAME = os.environ.get("NAME", "t2")
+DT_GRID = [float(v) for v in os.environ.get("DT_GRID", "-12,4").split(",")]
+FIT_SCALE = os.environ.get("FIT_SCALE", "1") == "1"  # 0: tag size known exactly (the scale fit is degenerate when the
+                                                     # lens barely translates, e.g. 30 mm raster lines)
+MIN_TAGS = int(os.environ.get("MIN_TAGS", 3))
 
-cal = json.load(open(f"{S}/gopro_intrinsics.json"))["models"]["pinhole_k3"]
+cal = json.load(open(os.environ.get("INTRINSICS", f"{S}/gopro_intrinsics.json")))["models"]["pinhole_k3"]
 K, Dist = np.array(cal["K"]), np.array(cal["D"])
 
-ch1 = pickle.load(open(f"{S}/tags_ch1.pkl", "rb"))
+ch1 = pickle.load(open(os.environ.get("TAGS", f"{S}/tags_ch1.pkl"), "rb"))
 tags = dict(ch1["result"]) if "result" in ch1 else dict(ch1)  # partial checkpoints are the bare dict
 if len(sys.argv) < 3 or sys.argv[2] != "ch1":
     ch2 = pickle.load(open(f"{S}/tags_ch2.pkl", "rb"))
@@ -139,7 +146,7 @@ pts = body_points(layout)
 # 2. Per-frame lens-body pose.
 cam_T_body, rms, tf = [], [], []
 for f in frames:
-    if sum(i in tags[f] for i in ids) < 3:
+    if sum(i in tags[f] for i in ids) < MIN_TAGS:
         continue
     T, e = multi_pnp(f, pts)
     cam_T_body.append(T)
@@ -147,11 +154,11 @@ for f in frames:
     tf.append(f / FPS)
 cam_T_body, rms, tf = np.array(cam_T_body), np.array(rms), np.array(tf)
 keep = rms < 2.0
-print(f"{len(tf)} frames with >=3 tags; reprojection rms median {np.median(rms):.2f} px; kept {keep.sum()}")
+print(f"{len(tf)} frames with >={MIN_TAGS} tags; reprojection rms median {np.median(rms):.2f} px; kept {keep.sum()}")
 cam_T_body, tf, rms = cam_T_body[keep], tf[keep], rms[keep]
 
 # 3. FK interpolation.
-fk = np.load(f"{S}/t2_fk.npz")
+fk = np.load(f"{S}/{NAME}_fk.npz")
 t_fk, F = fk["t"], fk["focal"]
 rot_fk = Rot.from_matrix(F[:, :3, :3])
 from scipy.spatial.transform import Slerp  # noqa: E402
@@ -214,9 +221,13 @@ def init_XY(dt, sel):
 
 
 # Restrict to the time FK covers, sub-sample for the dt search.
-in_fk = (COARSE_FRAME0 + tf > t_fk[0] + 15) & (COARSE_FRAME0 + tf < t_fk[-1] - 15)
-idx = np.where(in_fk)[0]
-sub = idx[:: max(1, len(idx) // 1500)]
+def fk_window(dt):
+    in_fk = (COARSE_FRAME0 + dt + tf > t_fk[0] + 15) & (COARSE_FRAME0 + dt + tf < t_fk[-1] - 15)
+    idx = np.where(in_fk)[0]
+    return idx, idx[:: max(1, len(idx) // 1500)]
+
+
+idx, sub = fk_window(0.0)
 
 
 def cost(dt):
@@ -225,16 +236,46 @@ def cost(dt):
     return np.median(np.linalg.norm(r[0], axis=1)), p
 
 
-import os  # noqa: E402
+def speed_sync(rng_s):
+    """Clock offset from the cross-correlation of rotation and translation SPEEDS (camera vs FK). Speeds do not depend
+    on the hand-eye (rotation speed not even on the tag size), so this works before any fit and over minutes of offset.
+    The GoPro clock was ~134-137 s fast on 2026-11-15, far outside the old DT_GRID search."""
+    H, grid = 0.5, np.arange(tf[0] + 1, tf[-1] - 1, 0.1)
+    Rc = Rot.from_matrix(cam_T_body[:, :3, :3])
+    i0, i1 = np.searchsorted(tf, grid - H).clip(0, len(tf) - 1), np.searchsorted(tf, grid + H).clip(0, len(tf) - 1)
+    span = tf[i1] - tf[i0]
+    ok = (span > 1.5 * H) & (span < 2.6 * H)
+    vc = np.linalg.norm(cam_T_body[i1, :3, 3] - cam_T_body[i0, :3, 3], axis=1) / np.maximum(span, 1e-3)
+    wc = np.degrees((Rc[i1] * Rc[i0].inv()).magnitude()) / np.maximum(span, 1e-3)
+    tg = np.arange(t_fk[0] + H, t_fk[-1] - H, 0.02)
+    a0, a1 = fk_at(tg - H), fk_at(tg + H)
+    vf = np.linalg.norm(a1[:, :3, 3] - a0[:, :3, 3], axis=1) / (2 * H)
+    wf = np.degrees(Rot.from_matrix(np.einsum("nij,nkj->nik", a1[:, :3, :3], a0[:, :3, :3])).magnitude()) / (2 * H)
+    best = (-2, 0.0)
+    for L in np.arange(-rng_s, rng_s, 0.02):
+        t = COARSE_FRAME0 + grid + L
+        m = ok & (t > t_fk[0] + 1) & (t < t_fk[-1] - 1)
+        if m.sum() < 100:
+            continue
+        r = np.corrcoef(vc[m], np.interp(t[m], tg, vf))[0, 1] + np.corrcoef(
+            np.minimum(wc[m], 20), np.minimum(np.interp(t[m], tg, wf), 20))[0, 1]
+        best = max(best, (r, L))
+    print(f"speed-correlation sync: dt {best[1]:+.2f} s (sum of translation + rotation speed correlations {best[0]:.2f})")
+    return best[1]
+
+
+if os.environ.get("SYNC_RANGE"):
+    os.environ["FIX_DT"] = str(speed_sync(float(os.environ["SYNC_RANGE"])))
 
 if os.environ.get("FIX_DT"):
     # Pose residuals are dominated by real, non-rigid disagreement, so the dt search can be flat;
     # pass the offset found from correction-move timing instead.
     dt = float(os.environ["FIX_DT"])
+    idx, sub = fk_window(dt)
     best_cost = cost(dt)[0]
     coarse = []
 else:
-    grid = np.arange(-12, 4, 0.5)
+    grid = np.arange(DT_GRID[0], DT_GRID[1], 0.5)
     coarse = [(cost(dt)[0], dt) for dt in grid]
     dt0 = min(coarse)[1]
     fine = [(cost(dt)[0], dt) for dt in np.arange(dt0 - 0.6, dt0 + 0.6, 1 / FPS)]
@@ -242,8 +283,12 @@ else:
 print("dt coarse curve:", " ".join(f"{d:+.1f}:{c:.3f}" for c, d in coarse))
 print(f"best dt {dt:+.3f} s (median rot residual {best_cost:.3f} deg); frame0 ROS time {COARSE_FRAME0 + dt:.3f}")
 
-p = least_squares(residuals, np.r_[init_XY(dt, idx), 1.0], args=(dt, idx), loss="soft_l1").x
-scale = p[12]
+if FIT_SCALE:
+    p = least_squares(residuals, np.r_[init_XY(dt, idx), 1.0], args=(dt, idx), loss="soft_l1").x
+    scale = p[12]
+else:
+    p = least_squares(residuals, init_XY(dt, idx), args=(dt, idx), loss="soft_l1").x
+    scale = 1.0
 print(f"fitted tag scale {scale:.4f} -> effective tag size {1000 * TAG * scale:.2f} mm")
 X, Y = params_to_XY(p)
 Y = scaled(Y, scale)
@@ -262,5 +307,5 @@ print(f"residual rotation (deg): median {np.median(ang):.3f} p95 {np.percentile(
 print(f"residual lens-axis direction (deg): median {np.median(axis_err):.3f} p95 {np.percentile(axis_err, 95):.3f}")
 print(f"residual focal-point position (mm): median {np.median(pos):.2f} p95 {np.percentile(pos, 95):.2f}")
 print("X cam_T_world:\n", X.round(4), "\nY focal_T_body:\n", Y.round(4))
-np.savez(f"{S}/t2_pose.npz", t=COARSE_FRAME0 + dt + tf[idx], world_meas=world_meas, world_fk=world_fk,
+np.savez(f"{S}/{NAME}_pose.npz", t=COARSE_FRAME0 + dt + tf[idx], world_meas=world_meas, world_fk=world_fk,
          rms=rms[idx], X=X, Y=Y, dt=dt, scale=scale, frame0=COARSE_FRAME0 + dt)

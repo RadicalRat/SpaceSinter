@@ -361,3 +361,63 @@ This is the continuous form of the outline's formulation (lens axis ∥ ŝ(t), F
   Discrete Trial 11 for comparison: pointing median 0.093 / p95 0.19 deg; continuous ~2x better. Caveat: all four
   are git bb794e2-dirty; Trial14 ran before the 13:35 changes (settle wait, 3x lifted across limit), 16-20 after
   (if the stack was restarted). Commit the current tree to pin 16-20.
+- 2026-11-15 ANALYSIS of the 4 full real-sun runs (scripts/analysis/continuous_figs.py ->
+  ~/RoSE_ws/Sinter_Paper/figures/continuous_2026-11-15/{fig1_timeseries,fig2_ecdf,fig3_err_vs_dex,stats.json}).
+  Pointing (sun camera, 1 s avg of the error vector, glare frames > 1 deg dropped): median 0.036/0.029/0.029/0.030 deg,
+  p95 0.112/0.085/0.099/0.070, max 0.17; 0 % > R2 (0.3) and > solar radius; 0.3-4.5 % > the old discrete tol
+  (0.115). Discrete (advisor_figs, same metric): T2 0.288/0.875 (48 % > R2), T11 0.092/0.180 (1.2 %). No drift in
+  time (|trend| <= 0.002 deg/min), no line-direction effect (fwd/back medians within 0.01 deg). Dexterity
+  0.074-0.10, zig-zag per line, uncorrelated with error (r -0.01..0.25). Path error (FK vs ref) median
+  0.34-0.47, p95 0.88-1.09, max 1.6-2.1 mm: ~2x the discrete FK placement (T2 0.17/0.35, T11 0.28/0.65), driver
+  lag while moving; 0.04 % of T16 > R1. Corner-effect test inconclusive (corner detection from v_cmd too noisy;
+  needs raster waypoints from the bags). GoPro HERO12: 4K 59.94 HEVC, clock = MST+1 h; GX010018/20/23/24 =
+  Trials 14/16/19/20 (staged in ~/sinter_bags/gopro_2026-11-15_staging, Elements copy pending: drive dirty after an
+  unplug, needs sudo ntfsfix -d /dev/sda1). Lens tags visible during scans (IDs 3,6,8,9,10 in one frame); tag
+  detection (step 6 = 10 Hz) running -> scratchpad tags/T*_tags.pkl; pose fit needs /tf from the bags + the 4K60
+  intrinsics (Elements gopro_2026-10-31/hero12_4k60_intrinsics.json).
+- 2026-11-15 FINAL PRODUCTS (GoPro GX010027, 16 s, 3 tiles on a concrete ledge beside an ArUco 4x4 id 28 marker,
+  150 mm black square per the user; 15 mm white margin seen): tag-plane homography at 5 px/mm from 6 frames.
+  Tiles ~32x28, 28x31, 26x36 mm (+ a broken-off lobe on the third, ~46-48 mm overall). Commanded raster is 30 x 30 mm
+  (40 mm square minus 2 x 5 mm edge margin: 13 lines x 30 mm + 12 x 2.5 = 420 mm, 39 points), so tile ~= raster +
+  spot: no sign of the 0.86x travel shortfall at the +-10 % level. Surface ridge period 3.2-4.4 mm (consistent across
+  frames) != 2.5 mm line spacing: melt texture, not tracks, so not a scale reference. Tile -> trial mapping unknown
+  (3 tiles, 4 runs). User: lens tags are exactly 30 mm (Oct 31 note said 31.75); then the Oct 30 GoPro fit implies
+  ~0.81x FK travel, which the tiles do not support -> today's GoPro pose (tags 30 mm fixed) is the deciding check.
+  User: focus_lift_m appeared to change with the time of day. Model: the offset is applied along the bed NORMAL; if
+  the real error is a constant delta along the LENS AXIS (focal-length / focal-link / depth error), the needed normal
+  offset is delta*cos(i) and the spot also shifts h*tan(i) sideways (~3-4 cm today). -0.06 at i~31 deg <-> delta
+  ~-0.07 m; -0.045 would match delta -0.07 at i~50 deg. Fix: apply the offset along the lens axis (one constant), and
+  measure the true lens-to-focus distance once (tape, sunny day) to correct the URDF so the offset goes to ~0.
+- 2026-11-15 GOPRO LENS POSE vs FK (tags 16h5, 30 mm per the user; HERO12 4K60 intrinsics of Oct 31; pose.py now
+  env-parametrised: FIT_SCALE=0 MIN_TAGS=2 ...; gopro_vs_fk.py). Tags found in ~96 % of sampled frames, reprojection
+  0.3-0.7 px. The full hand-eye fit is NOT usable today: focal-point position residual median 31-68 mm, dt jumps
+  -2.4..-9.7 s; the lens mostly translates and only rotates slowly, so cam_T_world is ill-conditioned (Oct 30 had
+  105 mm lines and big per-line tilts); T19's camera was bumped (~55 px shift between 400 and 600 s); T20 sees only
+  tags 4+7 (two-tag IPPE flips). GoPro rotation noise ~0.5-1.5 deg (axis vs ephemeris spread p95 0.5-1.6 deg) =>
+  cannot verify the 0.03 deg sun-camera pointing. FK axis vs ephemeris median 2.3/2.6/2.9/3.3 deg (T14/16/19/20,
+  heading 121): the known FK bias, configuration-dependent, absorbed by the sun-camera loop.
+  RIGID-INVARIANT TRAVEL TEST (no hand-eye): camera-frame tag-body displacement / FK focal displacement over 5-40 s
+  scan pairs with < 0.3 deg rotation: T14 0.761 (IQR 0.62-0.84, n 516), T16 0.747 (0.63-0.82, n 507); cameras
+  steady (< 3 px). Lateral PnP travel is scaled by the tag size, not fx, and depth noise biases UP. Consistent with
+  Oct 30 (0.86 at 31.75 mm = 0.81 at 30 mm). Either the arm moves ~20-25 % less than FK or the tags are ~38-40 mm
+  (Oct 30 free fit gave 37.9 mm). The burned tiles (28-36 mm for a 30 mm raster, scaled by the 150 mm marker) do
+  not clearly separate the two (unknown fused-track width). DECISIVE, cheap: Travel Test objective (100 mm
+  Cartesian moves) measured with a ruler/tape on the lens frame, and re-measure one tag's black square with calipers.
+- 2026-11-17 CORRECTION to the 2026-11-15 GoPro entry (Fable agent re-analysis; scripts/analysis/gopro_diag.py,
+  tag_poses.py, pose.py SYNC_RANGE; results in ~/sinter_bags/analysis_2026-11-15/diag/). ROOT CAUSE = TIME SYNC: the
+  GoPro clock was 133.7-137.4 s fast vs ROS beyond MST+1 h (speed cross-correlation, r 0.78-0.97; dt T14 -137.4,
+  T16 -136.0, T19 -134.4, T20 -133.7 s added to INDEX frame0). The old +-10 s dt search could not reach it, so the
+  "ill-conditioned hand-eye" was wrong: synced (stow move gives 38-100 deg rotation), the scaled hand-eye fits with
+  position residual median 1.0-1.8 mm (p95 2.7-6.1), rotation 0.25-0.89 deg. Intrinsics WERE solved (rms 0.30 px);
+  GPMF confirms identical Linear / HyperSmooth-off mode Oct 31 and Nov 15. Camera vs FK rotation-angle slope 0.89-1.02
+  (encoders/FK rotations fine). Lens axis GoPro vs FK during the scan median 0.16-0.44 deg (10 s avg 0.08-0.17).
+  Position-dependent tilt along lines: T14 0.56, T16 0.57 deg/100 mm (above noise floor; T19/T20 below their floor),
+  matching Oct 30. Per-frame noise: T14 (5 non-coplanar tags) 0.03-0.10 deg; T20 (tags 4+7 only) 0.53 deg.
+  GLOBAL SCALE k = 0.776 +- 0.015 (same for raster, 80 mm descent, 700 mm stow with 100 deg rotation, and on all
+  camera axes) => a units mismatch, NOT a travel shortfall. Either the black squares are 38.7 +- 0.8 mm (~1.5 in;
+  Oct 30 free fit 37.9) or every FK length is 1.29x long (implausible). Counter: at 30 mm the lens frame measures
+  ~CAD size. DECISIVE: tape tag 9<->10 centre distance (~455 mm => 30 mm tags; ~587 mm => 38.7 mm) and the mount-bar
+  length (~0.59 vs ~0.76 m). Future recordings: set the GoPro clock + start/end wrist sync wiggle, 30-60 s 3-axis
+  hand-eye motion, >= 50 mm non-coplanar tags, rigid closer camera.
+  2026-11-17 user: tags measured with calipers = 30 mm (black square), and only 30 mm fits on the arm => the 38.7 mm
+  reading is ruled out; k = 0.776 is an FK-vs-camera chain discrepancy still to locate (tape 9<->10 / Travel Test).
