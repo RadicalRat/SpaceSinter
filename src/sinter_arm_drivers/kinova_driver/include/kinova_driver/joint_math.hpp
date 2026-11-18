@@ -87,6 +87,41 @@ inline float positionErrorToVelocityDeg(double err_rad, double kp, double max_ve
   return static_cast<float>(vel_deg);
 }
 
+/// One step of the position-command velocity feed-forward (rad/s).
+///
+/// The commanding controller integrates its own joint setpoint, so the change
+/// in the position command between two write() cycles is the joint velocity it
+/// intends.  Without this term the P-loop only moves a joint once error has
+/// built up (lag = q̇/kp), which at the very low scan speeds lets static
+/// friction stick the joint and then release it in a jump (stick-slip).
+///
+/// The raw finite difference is clamped to ±max_rad_s before filtering, so a
+/// one-off jump in the command (e.g. a controller re-seeding its setpoint)
+/// cannot inject a large velocity spike, then passed through a first-order
+/// low-pass with time constant tau_s to remove timing jitter.  A non-positive
+/// or implausible dt, or a non-finite command, resets the term to zero.
+inline double feedforwardVelocityStep(
+  double prev_ff, double cmd, double prev_cmd, double dt, double tau_s,
+  double max_rad_s, bool continuous)
+{
+  if (!(dt > 0.0) || dt > 0.5 || !std::isfinite(cmd) || !std::isfinite(prev_cmd) ||
+    !std::isfinite(prev_ff))
+  {
+    return 0.0;
+  }
+  const double raw = std::clamp(positionError(cmd, prev_cmd, continuous) / dt, -max_rad_s, max_rad_s);
+  const double alpha = tau_s > 0.0 ? dt / (tau_s + dt) : 1.0;
+  return prev_ff + alpha * (raw - prev_ff);
+}
+
+/// Position tracking with velocity feed-forward: (ff + kp·err) in rad/s →
+/// deg/s, clamped to ±max_vel_deg.  With ff = 0 this is positionErrorToVelocityDeg.
+inline float trackingVelocityDeg(double ff_rad_s, double err_rad, double kp, double max_vel_deg)
+{
+  const double vel_deg = std::clamp((ff_rad_s + kp * err_rad) * kRadToDeg, -max_vel_deg, max_vel_deg);
+  return static_cast<float>(vel_deg);
+}
+
 /// Velocity passthrough: rad/s → deg/s, clamped to ±max_vel_deg.
 inline float velocityCommandToDeg(double vel_rad, double max_vel_deg)
 {

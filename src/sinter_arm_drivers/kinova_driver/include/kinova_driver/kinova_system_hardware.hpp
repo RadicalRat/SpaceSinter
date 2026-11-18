@@ -38,6 +38,10 @@
 //   serial_number              ""    pick this arm; empty = first arm found
 //   position_kp                5.0   (rad/s) per rad of position error
 //   max_joint_velocity_deg     100   clamp on every streamed joint velocity
+//   velocity_feedforward       0.0   gain on the position command's own rate
+//                                    (0 = pure P-loop, 1 = full feed-forward)
+//   feedforward_filter_s       0.03  low-pass time constant on that rate
+//   feedforward_max_deg        20    clamp on the feed-forward term (deg/s)
 //   io_rate_hz                 100   I/O thread loop rate
 //   effort_decimation          10    read effort every Nth I/O cycle
 //   command_timeout_ms         100   watchdog timeout for write()
@@ -119,6 +123,9 @@ private:
     std::string serial_number;
     double position_kp{5.0};
     double max_joint_velocity_deg{100.0};
+    double velocity_feedforward{0.0};
+    double feedforward_filter_s{0.03};
+    double feedforward_max_deg{20.0};
     double io_rate_hz{100.0};
     unsigned effort_decimation{10};
     std::chrono::milliseconds command_timeout{100};
@@ -139,6 +146,7 @@ private:
   {
     JointArray positions{};
     JointArray velocities{};
+    JointArray ff_velocities{};  ///< rad/s, position-command rate × gain (position mode)
     ControlMode mode{ControlMode::kIdle};
     std::chrono::steady_clock::time_point stamp{};  ///< when write() produced it
     bool erase_trajectories{false};                 ///< one-shot, set on mode switch
@@ -181,6 +189,10 @@ private:
   JointArray hw_vel_cmds_{};
   ControlMode mode_{ControlMode::kIdle};
   bool pending_erase_{false};
+  // Velocity feed-forward state (controller_manager thread only).
+  JointArray prev_pos_cmds_{};
+  JointArray ff_vel_{};
+  bool ff_primed_{false};  ///< false until one position command has been seen
 
   // Shared with the I/O thread, guarded by io_mutex_.
   std::mutex io_mutex_;

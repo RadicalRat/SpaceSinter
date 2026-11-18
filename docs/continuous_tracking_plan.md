@@ -421,3 +421,13 @@ This is the continuous form of the outline's formulation (lens axis ∥ ŝ(t), F
   hand-eye motion, >= 50 mm non-coplanar tags, rigid closer camera.
   2026-11-17 user: tags measured with calipers = 30 mm (black square), and only 30 mm fits on the arm => the 38.7 mm
   reading is ruled out; k = 0.776 is an FK-vs-camera chain discrepancy still to locate (tape 9<->10 / Travel Test).
+- 2026-11-18 PATH-ERROR SOURCE = SHOULDER STICK-SLIP. ~85 % of FK path-error power is in 0.2-1 Hz (peak ~4 s,
+  same in all 4 runs). Joint 2 during T16 scan: stationary 71 % of 50 ms steps, then jumps 0.06-0.11 deg (~0.6-0.7 mm
+  at the focal point); joint speeds during the scan only 0.005-0.15 deg/s. Cause: pure P-loop in the driver
+  (v = kp*err, kp 5/s) waits for error to build until static friction breaks. Damping/filtering would not help.
+  FIX (driver, untested on hardware): velocity feed-forward v = g*d(cmd)/dt + kp*err, rate from consecutive
+  position commands in write() (VFC/JTAC integrate their own setpoints, so this is the planned joint velocity, not
+  measured motion), raw rate clamped to feedforward_max_deg (20) then low-passed (feedforward_filter_s 0.03), reset
+  on mode switch / bad dt / NaN. Params in j2n6s300_physical_ros2_control_macro.xacro: velocity_feedforward 1.0
+  (0.0 = old behaviour). Unit tests 13/13. Evaluate on the next trial bags: joint-2 stationary fraction and jump
+  size, path-error 0.2-1 Hz power, path p95 (was 0.88-1.09 mm), pointing p95 (was 0.07-0.11 deg).

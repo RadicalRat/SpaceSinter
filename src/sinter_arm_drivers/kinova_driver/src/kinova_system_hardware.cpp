@@ -145,9 +145,11 @@ hardware_interface::CallbackReturn KinovaSystemHardware::on_init(
   hw_pos_cmds_.fill(nan);
   hw_vel_cmds_.fill(0.0);
 
-  RCLCPP_INFO(kLogger, "Initialized: Kp=%.2f, max vel=%.1f deg/s, I/O rate=%.0f Hz, "
-    "watchdog=%ld ms.", params_.position_kp, params_.max_joint_velocity_deg,
-    params_.io_rate_hz, static_cast<long>(params_.command_timeout.count()));
+  RCLCPP_INFO(kLogger, "Initialized: Kp=%.2f, velocity feed-forward=%.2f (filter %.3f s, max %.1f deg/s), "
+    "max vel=%.1f deg/s, I/O rate=%.0f Hz, watchdog=%ld ms.", params_.position_kp,
+    params_.velocity_feedforward, params_.feedforward_filter_s, params_.feedforward_max_deg,
+    params_.max_joint_velocity_deg, params_.io_rate_hz,
+    static_cast<long>(params_.command_timeout.count()));
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -187,7 +189,7 @@ bool KinovaSystemHardware::validateJoints() const
 bool KinovaSystemHardware::parseParams()
 {
   const auto & hp = info_.hardware_parameters;
-  auto get = [&](const std::string & key, double & out) {
+  auto get = [&](const std::string & key, double & out, bool allow_zero = false) {
       const auto it = hp.find(key);
       if (it == hp.end()) {
         return true;  // keep default
@@ -199,9 +201,9 @@ bool KinovaSystemHardware::parseParams()
           key.c_str(), it->second.c_str());
         return false;
       }
-      if (!(out > 0.0)) {
-        RCLCPP_ERROR(kLogger, "Parameter '%s' must be > 0 (got %s).",
-          key.c_str(), it->second.c_str());
+      if (!(out > 0.0) && !(allow_zero && out == 0.0)) {
+        RCLCPP_ERROR(kLogger, "Parameter '%s' must be %s (got %s).",
+          key.c_str(), allow_zero ? ">= 0" : "> 0", it->second.c_str());
         return false;
       }
       return true;
@@ -217,12 +219,20 @@ bool KinovaSystemHardware::parseParams()
   const bool ok =
     get("position_kp", params_.position_kp) &&
     get("max_joint_velocity_deg", params_.max_joint_velocity_deg) &&
+    get("velocity_feedforward", params_.velocity_feedforward, true) &&
+    get("feedforward_filter_s", params_.feedforward_filter_s, true) &&
+    get("feedforward_max_deg", params_.feedforward_max_deg) &&
     get("io_rate_hz", params_.io_rate_hz) &&
     get("effort_decimation", effort_decimation) &&
     get("command_timeout_ms", timeout_ms) &&
     get("max_consecutive_io_errors", max_errors) &&
     get("device_discovery_timeout_s", params_.device_discovery_timeout_s);
   if (!ok) {
+    return false;
+  }
+  if (params_.velocity_feedforward > 1.5) {
+    RCLCPP_ERROR(kLogger, "Parameter 'velocity_feedforward' must be in [0, 1.5] (got %.3f).",
+      params_.velocity_feedforward);
     return false;
   }
   params_.effort_decimation = static_cast<unsigned>(std::max(1.0, std::round(effort_decimation)));
@@ -546,6 +556,8 @@ hardware_interface::return_type KinovaSystemHardware::perform_command_mode_switc
   RCLCPP_INFO(kLogger, "Control mode %s → %s.",
     modeName(static_cast<int>(mode_)), modeName(static_cast<int>(mode)));
   mode_ = mode;
+  ff_vel_.fill(0.0);
+  ff_primed_ = false;  // the next position command starts the feed-forward from rest
   pending_erase_ = true;  // flush anything queued in the arm's trajectory FIFO
   return hardware_interface::return_type::OK;
 }
@@ -569,10 +581,31 @@ hardware_interface::return_type KinovaSystemHardware::read(
 }
 
 hardware_interface::return_type KinovaSystemHardware::write(
-  const rclcpp::Time &, const rclcpp::Duration &)
+  const rclcpp::Time &, const rclcpp::Duration & period)
 {
+  // Velocity feed-forward from the position command's own rate (see
+  // feedforwardVelocityStep).  Computed here, where consecutive commands and
+  // the controller period are known; the I/O thread adds it to the P term.
+  JointArray ff{};
+  if (mode_ == ControlMode::kPosition && params_.velocity_feedforward > 0.0 && allFinite(hw_pos_cmds_)) {
+    if (ff_primed_) {
+      const double max_rad_s = params_.feedforward_max_deg * kDegToRad;
+      for (size_t i = 0; i < kNumJoints; ++i) {
+        ff_vel_[i] = feedforwardVelocityStep(ff_vel_[i], hw_pos_cmds_[i], prev_pos_cmds_[i],
+          period.seconds(), params_.feedforward_filter_s, max_rad_s, kContinuous[i]);
+        ff[i] = params_.velocity_feedforward * ff_vel_[i];
+      }
+    }
+    prev_pos_cmds_ = hw_pos_cmds_;
+    ff_primed_ = true;
+  } else {
+    ff_vel_.fill(0.0);
+    ff_primed_ = false;
+  }
+
   std::lock_guard<std::mutex> lk(io_mutex_);
   shared_commands_.positions = hw_pos_cmds_;
+  shared_commands_.ff_velocities = ff;
   shared_commands_.velocities = hw_vel_cmds_;
   shared_commands_.mode = mode_;
   shared_commands_.stamp = std::chrono::steady_clock::now();
@@ -626,11 +659,15 @@ JointArrayF KinovaSystemHardware::computeVelocityCommand(
     JointArray err{};
     for (size_t i = 0; i < kNumJoints; ++i) {
       err[i] = positionError(cmd.positions[i], state.positions[i], kContinuous[i]);
-      vel_deg[i] = positionErrorToVelocityDeg(err[i], params_.position_kp, max_vel);
+      const double ff = std::isfinite(cmd.ff_velocities[i]) ? cmd.ff_velocities[i] : 0.0;
+      vel_deg[i] = trackingVelocityDeg(ff, err[i], params_.position_kp, max_vel);
     }
     RCLCPP_DEBUG_THROTTLE(kLogger, steady_clock_, 500,
-      "[pos] err=[%.4f %.4f %.4f %.4f %.4f %.4f] vel=[%.1f %.1f %.1f %.1f %.1f %.1f] deg/s",
+      "[pos] err=[%.4f %.4f %.4f %.4f %.4f %.4f] ff=[%.3f %.3f %.3f %.3f %.3f %.3f] "
+      "vel=[%.2f %.2f %.2f %.2f %.2f %.2f] deg/s",
       err[0], err[1], err[2], err[3], err[4], err[5],
+      cmd.ff_velocities[0] * kRadToDeg, cmd.ff_velocities[1] * kRadToDeg, cmd.ff_velocities[2] * kRadToDeg,
+      cmd.ff_velocities[3] * kRadToDeg, cmd.ff_velocities[4] * kRadToDeg, cmd.ff_velocities[5] * kRadToDeg,
       vel_deg[0], vel_deg[1], vel_deg[2], vel_deg[3], vel_deg[4], vel_deg[5]);
   } else {
     if (!allFinite(cmd.velocities)) {
